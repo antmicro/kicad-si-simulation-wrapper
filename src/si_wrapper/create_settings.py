@@ -1,16 +1,20 @@
 """Script that generates a set of configuration files for netslices."""
 
-import pcbnew
-import re
-from si_wrapper.constant import REGEX_IMPEDANCE_PATT, PCB_EXTENSION
-import sys
 import json
-import argparse
-import os
 import logging
-from typing import Any
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Annotated
+
+import pcbnew
+import typer
+
+from si_wrapper.constant import PCB_EXTENSION, REGEX_IMPEDANCE_PATT
 
 logger = logging.getLogger(__name__)
+app = typer.Typer()
 
 
 class SettingCreator:
@@ -39,8 +43,8 @@ class SettingCreator:
         data = {
             "designated_nets": nets,
             "board_offset": {"top": 1, "bottom": 1, "left": 1, "right": 1},
-            "whitelist": [],
-            "blacklist": [],
+            "included_pads": [],
+            "excluded_pads": [],
             "hidden_pads": {"designated_net": True, "other_nets": True},
             "neighbouring_nets": {
                 "in_use": True,
@@ -57,34 +61,6 @@ class SettingCreator:
             json.dump(data, simulation_json, indent=2)
 
 
-def parse_arguments() -> Any:
-    """Parse commandline arguments."""
-    parser = argparse.ArgumentParser(
-        prog="Config creator",
-        description="This application creates config for every chosen net",
-    )
-
-    parser.add_argument(
-        "-o",
-        "--output",
-        metavar="OUTPUT_NET_CONFIG_PATH",
-        help="Net configs out path",
-    )
-
-    parser.add_argument(
-        "-i",
-        "--input",
-        metavar="INPUT_INIT_PATH",
-        help="Initial .json input path",
-    )
-
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-d", "--debug", action="store_true", dest="debug")
-    group.add_argument("--log", choices=["DEBUG", "INFO", "WARNING", "ERROR"], dest="log_level")
-
-    return parser.parse_args()
-
-
 def get_pcb_path() -> str | None:
     """Check if file with .kicad_pcb extension exists in current folder."""
     for file in os.listdir():
@@ -93,17 +69,20 @@ def get_pcb_path() -> str | None:
     return None
 
 
-def main():
+@app.command("settings")
+def main(
+    input_file: Annotated[Path, typer.Option("--input", "-i", help="Initial .json input path")],
+    output_file: Annotated[Path, typer.Option("--output", "-o", help="Net config output path")],
+):
     """Generate settings for netslices."""
-    args = parse_arguments()
     nlist = []
 
     init_path = ""
     out_path = ""
 
-    if len(args.input) > 1 and len(args.output) > 1:
-        init_path = args.input
-        out_path = args.output
+    if input_file is not None and output_file is not None:
+        init_path = str(input_file)
+        out_path = str(output_file)
 
     else:
         logger.error("No given args file in current directory.")
@@ -148,9 +127,14 @@ def main():
             elif n[-1] != "N" or n[-1] != "P":
                 settings.new_config([n])
     else:
-        for net in nets:
-            settings.new_config(net)
+        for n in nets:
+            if n[-1] == "N":
+                settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
+            elif n[-1] == "-":
+                settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
+            elif n[-1] != "N" or n[-1] != "P":
+                settings.new_config([n])
 
 
 if __name__ == "__main__":
-    main()
+    app()

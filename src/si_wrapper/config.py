@@ -1,6 +1,7 @@
 """Script that contains tools for configuration files generation."""
 
 import json
+
 from si_wrapper.constant import DEFAULT_SIMULATION_J
 
 
@@ -25,13 +26,13 @@ class Settings:
         """Get list of designated nets."""
         return [i for i in self.json_file["designated_nets"]]
 
-    def get_blacklist(self) -> list[str]:
+    def get_excluded_pads(self) -> list[str]:
         """Get list of footprints that cannot contain simulation ports on the pads."""
-        return [i for i in self.json_file["blacklist"]]
+        return [i for i in self.json_file["excluded_pads"]]
 
-    def get_whitelist(self) -> list[str]:
+    def get_included_pads(self) -> list[str]:
         """Get list of footprints that can contain simulation ports on the pads."""
-        return [i for i in self.json_file["whitelist"]]
+        return [i for i in self.json_file["included_pads"]]
 
     def is_pad_designated(self) -> list[str]:
         """Get if designated pads hidden."""

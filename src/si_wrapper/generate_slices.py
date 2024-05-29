@@ -1,53 +1,26 @@
 """Script that generates slices."""
 
+import logging
 import os
 import sys
-import argparse
-import coloredlogs
-import logging
+from typing import Any, Annotated, List
+from pathlib import Path
 
-from si_wrapper.pcbslicer import const, PCBSlice, netclass_list
-from si_wrapper.config import PortConfig, Settings, NetInformation
-from typing import Any
+import coloredlogs
+import typer
+
+from si_wrapper.config import NetInformation, PortConfig, Settings
+from si_wrapper.pcbslicer import PCBSlice, const, netclass_list
 
 logger = logging.getLogger(__name__)
+app = typer.Typer()
 
-
-def parse_arguments() -> Any:
-    """Parse commandline arguments."""
-    parser = argparse.ArgumentParser(
-        prog="PCB Slicer",
-        description="This application allows to slice PCB with chosen net",
-    )
-    parser.add_argument(
-        "-s",
-        "--settings",
-        metavar="SETTINGS_FILE",
-        help="Insert path to settings.json file, containing configuration",
-    )
-    parser.add_argument(
-        "-l",
-        "--list",
-        action="store_true",
-        help="List Net classes with corresponding nets",
-    )
-
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-d", "--debug", action="store_true", dest="debug")
-    group.add_argument("--log", choices=["DEBUG", "INFO", "WARNING", "ERROR"], dest="log_level")
-
-    return parser.parse_args()
-
-
-def setup_logging(args) -> None:
+def setup_logging(debug) -> None:
     """Set up logging based on command line arguments."""
     level = logging.INFO
 
-    if args.debug:
+    if debug:
         level = logging.DEBUG
-
-    if args.log_level is not None:
-        level = logging.getLevelName(args.log_level)
 
     if level == logging.DEBUG:
         coloredlogs.install(
@@ -160,16 +133,19 @@ def get_ports_placement_info(first_net_ports: list, second_net_ports: list, is_d
     return first_net_info, second_net_info
 
 
-def main():
-    """Return output files."""
+@app.command("slice")
+def main(config_file: Annotated[Path, typer.Option("--file", "-f", help="Path to settings file")],
+          list_nets: Annotated[bool, typer.Option("--list", "-l", help="List Net classes with corresponding nets")] = False,
+          debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False
+          ):
+    """Generate slices for chosen PCB."""
     is_diff = False
     plane = 0
     excite = [True, True]
 
-    sp_index_1 = []
-    sp_index_2 = []
-    args = parse_arguments()
-    setup_logging(args)
+    sp_index_1: List = []
+    sp_index_2: List = []
+    setup_logging(debug)
 
     pcb_path = get_pcb_path()
     if pcb_path is None:
@@ -178,15 +154,15 @@ def main():
 
     check_path_exit(path=pcb_path)
 
-    if args.list:
+    if list_nets:
         logger.info("Displaying Netclasses...")
         netclass_list(pcb_path)
 
-    if not args.settings:
+    if config_file is None:
         logger.error("No settings.json file defined")
         sys.exit()
 
-    settings_path = args.settings
+    settings_path = str(config_file)
     settings = Settings(settings_path)
 
     logger.info("Loading Simulation Port footprint...")
@@ -194,8 +170,8 @@ def main():
     pcb_slice = PCBSlice(pcb_path, netname)
     pcb_slice.check_netname()
 
-    whitelist = settings.get_whitelist()
-    blacklist = settings.get_blacklist()
+    included_pads = settings.get_included_pads()
+    excluded_pads = settings.get_excluded_pads()
 
     offset = settings.get_offset()
     dir_path, file_path = create_output_path(netname[0])
@@ -242,11 +218,11 @@ def main():
     # Get orientation of the track/s to place simulation ports
     logger.info("Checking tracks orientation...")
     candidate_sp_pos1, candidate_sp_orient1, candidate_sp_is_flipped_1 = pcb_slice.get_track_orientation(
-        des_net_1, pads, whitelist, blacklist
+        des_net_1, pads, included_pads, excluded_pads
     )
     if des_net_2 != []:
         candidate_sp_pos2, candidate_sp_orient2, candidate_sp_is_flipped_2 = pcb_slice.get_track_orientation(
-            des_net_2, pads, whitelist, blacklist
+            des_net_2, pads, included_pads, excluded_pads
         )
 
     if neighbour_inuse:
@@ -300,7 +276,7 @@ def main():
             pcb_slice.get_selected_track_info(trs)
         )
         candidate_sp_pos_other, candidate_sp_ori_other, candidate_sp_is_flipped_other = pcb_slice.get_track_orientation(
-            trs, other_pads, whitelist, blacklist
+            trs, other_pads, included_pads, excluded_pads
         )
         # Hiding other pads
         if settings.is_pad_other():
@@ -392,4 +368,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app()

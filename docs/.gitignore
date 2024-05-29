@@ -1,0 +1,5 @@
+build/
+*.pyc
+*.sw*
+venv/
+.venv/

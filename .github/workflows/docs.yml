@@ -1,0 +1,46 @@
+name: docs
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-full
+          python -m pip install -r docs/requirements.txt
+      - name: Generate documentation
+        run: |
+          cd docs
+          make html latexpdf
+          cp build/latex/*.pdf build/html/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gh-page
+          path: docs/build/html
+      - name: Deploy to Github Pages
+        if: github.event_name != 'pull_request'
+        run: |
+          cd docs/build/html
+          touch .nojekyll
+          git init
+          cp ../../../.git/config ./.git/config
+          git add .
+          git config --local user.email "push@gha"
+          git config --local user.name "GHA"
+          git commit -am "update ${{ github.sha }}"
+          git push -u origin +HEAD:gh-pages
