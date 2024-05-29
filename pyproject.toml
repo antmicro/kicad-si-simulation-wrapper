@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools >= 65", "wheel >= 0.38"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "si_wrapper"
+version = "0.9.0"
+dependencies = ["numpy", "matplotlib", "coloredlogs", "pyyaml", "Pillow"]
+
+scripts = {wrapper_slicer = "si_wrapper.slice:main", wrapper_renumerator = "si_wrapper.renumerator:main", wrapper_settings = "si_wrapper.create_settings:main", wrapper_gerb2png = "si_wrapper.gerber2png:main"}
+
+[project.optional-dependencies]
+dev = ["mypy", "ruff", "black"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["si_wrapper"]
+
+[tool.setuptools.package-data]
+"si_wrapper" = ["footprint/Simulation_Port.kicad_mod"]
+
+[tool.ruff]
+select = ["E", "F", "N", "B", "D", "A", "RET"]
+line-length = 120
+target-version = "py38"
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+ignore_missing_imports = true
