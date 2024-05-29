@@ -1,0 +1,73 @@
+stages:
+  - test
+  - build
+  - deploy
+
+image: $CI_DOCS_DOCKER_IMAGE
+
+test:
+  stage: test
+  tags: ['ace-x86_64']
+  image: 'external/docker/debian:bookworm'
+  before_script:
+    - mkdir -p logs
+    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
+    - apt-get -qqy update >> logs/debian_install.log
+    - apt-get -qqy update --fix-missing >> logs/debian_install.log
+    - apt-get -qqy install git python3 python3-pip gerbv >> logs/debian_install.log
+    - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
+    - git clone https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
+  script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - python3 -m pip install . --break-system-packages --root-user-action=ignore
+    - cd sodimm-ddr5-tester
+    - echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
+    - mkdir net_configs
+    - si-wrapper settings -i init.json -o net_configs
+    - |
+      for file in net_configs/*; do
+        si-wrapper slice -f $file
+      done
+    - cd slices
+    - |
+      for dir in ./*/; do
+        cd $dir
+        mkdir fab
+        kicad-cli pcb export gerbers --no-protel-ext -o fab/ *.kicad_pcb
+        kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ *.kicad_pcb
+        si-wrapper gerber2png
+        cd ../
+      done
+
+  artifacts:
+    when: always
+    paths:
+      - sodimm-ddr5-tester
+      - logs
+
+build:
+  stage: build
+  tags: ['ace-x86_64']
+  before_script:
+    - pip3 install -r docs/requirements.txt
+  script:
+    - cd docs
+    - make html latexpdf
+    - cp build/latex/*.pdf build/html/
+    - tar cf $CI_DOCS_ARCHIVE -C build/html/ .
+  artifacts:
+    paths:
+      - build
+      - $CI_DOCS_ARCHIVE
+
+deploy:
+  variables:
+    GIT_STRATEGY: none
+  dependencies:
+    - build
+  stage: deploy
+  tags: ['docs']
+  script: echo 'Deploying docs'
+  artifacts:
+    paths:
+      - $CI_DOCS_ARCHIVE

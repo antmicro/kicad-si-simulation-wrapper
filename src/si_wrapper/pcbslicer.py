@@ -1,14 +1,14 @@
 """Library file containing class for generating and editing netslices."""
 
-import pcbnew
-import numpy as np
 import logging
-import os
-import sys
-from pathlib import Path
 import re
-import si_wrapper.constant as const
+import sys
 from typing import Any, Iterable
+
+import numpy as np
+import pcbnew
+
+import si_wrapper.constant as const
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +171,8 @@ class PCBSlice:
 
         # for x in rm_zones:
         #     self.board.Remove(x)
+
+        self.replace_resistors_and_capacitors()
 
         filler = pcbnew.ZONE_FILLER(self.board)
         filler.Fill(zones)
@@ -464,8 +466,6 @@ class PCBSlice:
 
         edges = [max_track_x, min_track_x, max_track_y, min_track_y]
 
-        # // TODO: Fix this
-        # self.replace_resistors_and_capacitors()
         self.footprint_to_pad()
         new_edges = self.remove_footprints(edges)
 
@@ -586,7 +586,7 @@ class PCBSlice:
         d = np.sqrt((center[0] - x) ** 2 + (center[1] - y) ** 2)
         return d <= radius
 
-    def get_track_orientation(self, tracks, pads: list, whitelist: list, blacklist: list) -> tuple:
+    def get_track_orientation(self, tracks, pads: list, included_pads: list, excluded_pads: list) -> tuple:
         """Allow to get the orientation of the track nearest pad."""
         position = []
         orientation = []
@@ -624,13 +624,13 @@ class PCBSlice:
                             current_pos = s_tr
                             phi = self.calculate_orientation(s_tr, e_tr)
 
-                        if len(whitelist) and pad.GetParent().GetReference() in whitelist:
+                        if len(included_pads) and pad.GetParent().GetReference() in included_pads:
                             position.append(current_pos)
                             orientation.append(phi)
-                        elif len(blacklist) and pad.GetParent().GetReference() not in blacklist:
+                        elif len(excluded_pads) and pad.GetParent().GetReference() not in excluded_pads:
                             position.append(current_pos)
                             orientation.append(phi)
-                        elif len(whitelist) == 0 and len(blacklist) == 0:
+                        elif len(included_pads) == 0 and len(excluded_pads) == 0:
                             position.append(current_pos)
                             orientation.append(phi)
                         break
@@ -652,7 +652,6 @@ class PCBSlice:
         while i < len(tracks):
             # if tracks[i].GetNetname() == current_track.GetNetname():
             if tracks[i].GetNetCode() == current_track.GetNetCode():
-
                 s_tr = tracks[i].GetStart()
                 e_tr = tracks[i].GetEnd()
 
@@ -763,22 +762,23 @@ class PCBSlice:
         pad1: pcbnew.PCB_PAD_T = 0
 
         for component1 in self.board.GetFootprints():
-            new_track = pcbnew.PCB_TRACK(self.board)
-            if re.search(pattern, component1.GetValue()):
-                if component1.GetAttributes() & 10 != 10:
-                    if component1.Pads()[0].GetNumber() == "1":
-                        pad1 = component1.Pads()[0]
-                        if component1.Pads()[1].GetNumber() == "2":
-                            pad2 = component1.Pads()[1]
-
-                            if (pad1.GetNetname() != "GND") and (pad2.GetNetname() != "GND"):
-                                print(pad1.GetNetname(), pad2.GetNetname())
-                                new_track.SetWidth(defined_width)
-                                new_track.SetLayer(pad1.GetLayer())
-                                new_track.SetStart(pad2.GetPosition())
-                                new_track.SetEnd(pad1.GetPosition())
-                                new_track_d = new_track.Duplicate()
-                                self.board.Add(new_track_d)
+            for component2 in self.board.GetFootprints():
+                new_track = pcbnew.PCB_TRACK(self.board)
+                if component1.GetReference() == component2.GetReference():
+                    if re.search(pattern, component1.GetValue()):
+                        if component1.GetAttributes() & 10 != 10:
+                            # print(component1.Pads()[0].GetNumber(), component2.Pads()[0].GetNumber())
+                            if component1.Pads()[0].GetNumber() == "1":
+                                pad1 = component1.Pads()[0]
+                                if component2.Pads()[0].GetNumber() == "2":
+                                    pad2 = component2.Pads()[0]
+                                    if (pad1.GetNetname() != "GND") and (pad2.GetNetname() != "GND"):
+                                        new_track.SetWidth(defined_width)
+                                        new_track.SetLayer(pad1.GetLayer())
+                                        new_track.SetStart(component2.GetPosition())
+                                        new_track.SetEnd(component1.GetPosition())
+                                        new_track_d = new_track.Duplicate()
+                                        self.board.Add(new_track_d)
 
     def place_simulation_port(
         self, position: list[Any], orientation: list[Any], is_flipped: list[bool]
@@ -952,7 +952,7 @@ class PCBSlice:
 
         for i in range(len(my_dict)):
             # print(list(my_dict.values())[i], list(my_dict.keys())[i])
-            if list(my_dict.values())[i] > common_points_number:
+            if list(my_dict.values())[i] >= common_points_number:
                 names.append(list(my_dict.keys())[i])
 
         for track in tracks:

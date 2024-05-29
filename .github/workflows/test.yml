@@ -1,0 +1,53 @@
+name: test
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    container:
+      image: kicad/kicad:7.0.11
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 1
+      - name: Install dependencies
+        run: |
+          apt-get -qqy update
+          apt-get -qqy install -y git python3-pip gerbv
+          pip install --break-system-packages --root-user-action=ignore "."
+      - name: Run tests
+        run: |
+          git clone https://github.com/antmicro/sodimm-ddr5-tester.git
+          export PATH=$HOME/.local/bin:$PATH
+          cd sodimm-ddr5-tester
+          echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
+          mkdir net_configs
+          si-wrapper settings -i init.json -o net_configs
+          for file in net_configs/*; do
+            si-wrapper slice -f $file
+          done
+          cd slices
+          for dir in ./*/; do
+            cd $dir
+            mkdir fab
+            kicad-cli pcb export gerbers --no-protel-ext -o fab/ *.kicad_pcb
+            kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ *.kicad_pcb
+            si-wrapper gerber2png
+            cd ../
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-slices
+          path: sodimm-ddr5-tester
+
+

@@ -1,13 +1,16 @@
 """Script that creates bitmaps from gerbers."""
 
 import logging
-import subprocess
-import PIL.Image
-import PIL.ImageOps
 import os
+import subprocess
 import sys
 
+import PIL.Image
+import PIL.ImageOps
+import typer
+
 logger = logging.getLogger(__name__)
+app = typer.Typer()
 
 
 def process_gbrs_to_pngs() -> None:
@@ -110,10 +113,11 @@ def setup_imagic(not_cropped_name: str, output_filename: str) -> None:
     os.remove(not_cropped_name)
 
 
+@app.command("gerber2png")
 def main():
     """Process gerbers to png."""
     process_gbrs_to_pngs()
 
 
 if __name__ == "__main__":
-    main()
+    app()

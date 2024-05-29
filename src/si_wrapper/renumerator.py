@@ -1,15 +1,16 @@
 """Script that allows renumerating simulation ports already placed on the board."""
 
-import os
 import logging
+import os
 
+from si_wrapper.config import NetInformation, PortConfig
+from si_wrapper.pcbslicer import PCBSlice, const
+import typer
 # import subprocess
 
-from si_wrapper.pcbslicer import const, PCBSlice
-from si_wrapper.config import PortConfig, NetInformation
 
 logger = logging.getLogger(__name__)
-
+app = typer.Typer()
 
 def get_pcb_path() -> str | None:
     """Check if file with .kicad_pcb extension exists in current folder."""
@@ -19,8 +20,9 @@ def get_pcb_path() -> str | None:
     return None
 
 
+@app.command("renumerate")
 def main():
-    """Save netslice and update simulation.json."""
+    """Renumerate placed Simulation Ports on the board and update simulation.json file."""
     # Open .json file with information
     net_config = NetInformation(const.NETINFO_J_PATH)
     net_name = net_config.get_names()
