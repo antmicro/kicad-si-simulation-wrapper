@@ -220,7 +220,7 @@ class PCBSlice:
                     track_beg="start",
                 )
                 orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(start_x), float(start_y))))
+                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
                 if (
                     self.terminate_track(
                         start_x,
@@ -244,7 +244,7 @@ class PCBSlice:
                     track_beg="end",
                 )
                 orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(end_x), float(end_y))))
+                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
                 if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
                     sp_tracks.append(track)
 
@@ -258,7 +258,7 @@ class PCBSlice:
                     track_beg="end",
                 )
                 orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(end_x), float(end_y))))
+                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
                 if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
                     sp_tracks.append(track)
 
@@ -272,7 +272,7 @@ class PCBSlice:
                     track_beg="start",
                 )
                 orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(start_x), float(start_y))))
+                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
                 if (
                     self.terminate_track(
                         start_x,
@@ -296,7 +296,7 @@ class PCBSlice:
                     track_beg="start",
                 )
                 orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(start_x), float(start_y))))
+                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
                 if (
                     self.terminate_track(
                         start_x,
@@ -320,7 +320,7 @@ class PCBSlice:
                     track_beg="end",
                 )
                 orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(end_x), float(end_y))))
+                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
                 if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
                     sp_tracks.append(track)
 
@@ -334,7 +334,7 @@ class PCBSlice:
                     track_beg="end",
                 )
                 orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(end_x), float(end_y))))
+                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
                 if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
                     sp_tracks.append(track)
 
@@ -348,7 +348,7 @@ class PCBSlice:
                     track_beg="start",
                 )
                 orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(start_x), float(start_y))))
+                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
                 if (
                     self.terminate_track(
                         start_x,
@@ -387,7 +387,7 @@ class PCBSlice:
             if footprint_x > edges[0] or footprint_x < edges[1] or footprint_y > edges[2] or footprint_y < edges[3]:
                 to_remove.append(footprint)
 
-        for item in set(to_remove):
+        for item in to_remove:
             self.board.Delete(item)
 
         # checkLayers = [pcbnew.F_CrtYd, pcbnew.B_CrtYd]
@@ -419,8 +419,8 @@ class PCBSlice:
                 for pad in footprint.Pads():
                     virt_footprint = pcbnew.FOOTPRINT(self.board)
                     new_pad = pcbnew.PAD(pad)
-                    new_pad.SetPos0(
-                        pcbnew.VECTOR2I(pcbnew.wxPoint(0, 0))
+                    new_pad.SetPos(
+                        pcbnew.VECTOR2I(0, 0)
                     )  # Set pad position to origin of the footprint
                     if re.search(self.ci_dict(), str(pad.GetNetClassName())) is None:
                         new_pad.SetNet(self.GNDnet)
@@ -499,8 +499,8 @@ class PCBSlice:
         self.board.Add(segment)
         segment.SetShape(pcbnew.S_RECT)
         segment.SetLayer(pcbnew.Edge_Cuts)
-        segment.SetStart(pcbnew.VECTOR2I(pcbnew.wxPointMM(edge_corners[0][0], edge_corners[0][1])))
-        segment.SetEnd(pcbnew.VECTOR2I(pcbnew.wxPointMM(edge_corners[1][0], edge_corners[1][1])))
+        segment.SetStart(pcbnew.VECTOR2I_MM(edge_corners[0][0], edge_corners[0][1]))
+        segment.SetEnd(pcbnew.VECTOR2I_MM(edge_corners[1][0], edge_corners[1][1]))
 
         # Remove mask layers out of EdgeCuts
         for drawing in self.board.GetDrawings():
@@ -511,11 +511,9 @@ class PCBSlice:
         temporary_aux_offset = 0.025
 
         self.board.GetDesignSettings().SetAuxOrigin(
-            pcbnew.VECTOR2I(
-                pcbnew.wxPointMM(
+            pcbnew.VECTOR2I_MM(
                     edge_corners[0][0] - temporary_aux_offset,
                     edge_corners[1][1] + temporary_aux_offset,
-                )
             )
         )
 
@@ -737,7 +735,7 @@ class PCBSlice:
             orient_eda = pcbnew.EDA_ANGLE(theta, pcbnew.DEGREES_T)
             self.SimPortFootprint.SetOrientation(orient_eda)
 
-            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(x), float(y))))
+            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
             self.SimPortFootprint.SetReference(f"SP{PCBSlice.static_sp_index}")
             sp_instance = self.SimPortFootprint.Duplicate()
             self.board.Add(sp_instance)
@@ -749,7 +747,7 @@ class PCBSlice:
         new_via.SetViaType(pcbnew.VIATYPE_BLIND_BURIED)
         new_via.SetWidth(width_t)
         new_via.SetNet(self.GNDnet)
-        new_via.SetPosition(pcbnew.VECTOR2I(pcbnew.wxPointMM(float(x), float(y))))
+        new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
         self.board.Add(new_via)
         return 1
 
@@ -821,7 +819,7 @@ class PCBSlice:
             orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
             self.SimPortFootprint.SetOrientation(orient_eda)
 
-            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I(pcbnew.wxPointMM(x, y)))
+            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(x, y))
             self.SimPortFootprint.SetReference(f"SP{PCBSlice.static_sp_index}")
             sp_instance = self.SimPortFootprint.Duplicate()
             self.board.Add(sp_instance)
