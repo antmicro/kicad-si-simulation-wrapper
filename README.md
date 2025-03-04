@@ -1,6 +1,6 @@
 # KiCad SI wrapper - tool to prepare input data for SI simulation
 
-Copyright (c) 2023-2024 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2023-2025 [Antmicro](https://www.antmicro.com)
 
 ![ ](img/si-wrapper.png)
 
@@ -26,9 +26,9 @@ for more information about using `si-wrapper`.
 
 ### Requirements
 
-`si-wrapper` requires `KiCad 7.0.x`, `python >= 3.10`, `pip` and `gerbv`.
+`si-wrapper` requires `KiCad 8.0.x`, `python >= 3.10`, `pip` and `gerbv`.
 
-> Note: The provided scripts were tested with KiCad 7.0.11 and Debian 12.
+> Note: The provided scripts were tested with KiCad 8.0.8 and Debian 12.
 
 ### Installation (Debian)
 
