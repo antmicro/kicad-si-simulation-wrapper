@@ -146,11 +146,8 @@ class PCBSlice:
         [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = edges
 
         zones = self.board.Zones()
-        # rm_zones = []
-
+        to_remove = []
         for zone in zones:
-            # if zone.GetIsRuleArea():
-            # rm_zones.append(zone)
 
             outline = zone.Outline()
             zone.SetNet(self.GNDnet)
@@ -158,19 +155,21 @@ class PCBSlice:
             zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_NEVER)
             for i in range(outline.FullPointCount()):
                 [point_x, point_y] = outline.COutline(0).GetPoint(i)
-                if pcbnew.ToMM(point_x) > max_edge_x:
-                    point_x = int(max_edge_x * 10e5)
-                if pcbnew.ToMM(point_x) < min_edge_x:
-                    point_x = int(min_edge_x * 10e5)
-                if pcbnew.ToMM(point_y) > max_edge_y:
-                    point_y = int(max_edge_y * 10e5)
-                if pcbnew.ToMM(point_y) < min_edge_y:
-                    point_y = int(min_edge_y * 10e5)
+                [point_x, point_y] = [pcbnew.ToMM(point_x), pcbnew.ToMM(point_y)]
+                if point_x > max_edge_x:
+                    point_x = max_edge_x
+                if point_x < min_edge_x:
+                    point_x = min_edge_x
+                if point_y > max_edge_y:
+                    point_y = max_edge_y
+                if point_y < min_edge_y:
+                    point_y = min_edge_y
 
-                outline.COutline(0).SetPoint(i, pcbnew.VECTOR2I(point_x, point_y))
-
-        # for x in rm_zones:
-        #     self.board.Remove(x)
+                outline.COutline(0).SetPoint(i, pcbnew.VECTOR2I_MM(float(point_x), float(point_y)))
+            if zone.CalculateOutlineArea() < 1e-5:
+                to_remove.append(zone)
+        for zone in to_remove:
+            self.board.Remove(zone)
 
         self.replace_resistors_and_capacitors()
 
@@ -419,9 +418,7 @@ class PCBSlice:
                 for pad in footprint.Pads():
                     virt_footprint = pcbnew.FOOTPRINT(self.board)
                     new_pad = pcbnew.PAD(pad)
-                    new_pad.SetPos(
-                        pcbnew.VECTOR2I(0, 0)
-                    )  # Set pad position to origin of the footprint
+                    new_pad.SetPos(pcbnew.VECTOR2I(0, 0))  # Set pad position to origin of the footprint
                     if re.search(self.ci_dict(), str(pad.GetNetClassName())) is None:
                         new_pad.SetNet(self.GNDnet)
                     virt_footprint.Add(new_pad)
@@ -512,8 +509,8 @@ class PCBSlice:
 
         self.board.GetDesignSettings().SetAuxOrigin(
             pcbnew.VECTOR2I_MM(
-                    edge_corners[0][0] - temporary_aux_offset,
-                    edge_corners[1][1] + temporary_aux_offset,
+                edge_corners[0][0] - temporary_aux_offset,
+                edge_corners[1][1] + temporary_aux_offset,
             )
         )
 

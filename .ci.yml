@@ -1,21 +1,21 @@
+include:
+  - project: repositories/antmicro-pcb-release-ci-template
+    ref: main
+    file: .docs.yml
+
 stages:
   - test
   - build
   - deploy
 
-image: $CI_DOCS_DOCKER_IMAGE
-
 test:
   stage: test
-  tags: ['ace-x86_64']
-  image: 'external/docker/debian:bookworm'
+  image: $CI_REGISTRY/$CI_KIMAGE
   before_script:
     - mkdir -p logs
-    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
     - apt-get -qqy update >> logs/debian_install.log
     - apt-get -qqy update --fix-missing >> logs/debian_install.log
     - apt-get -qqy install git python3 python3-pip gerbv >> logs/debian_install.log
-    - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
     - git clone https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
   script:
     - export PATH=$HOME/.local/bin:$PATH
@@ -44,30 +44,3 @@ test:
     paths:
       - sodimm-ddr5-tester
       - logs
-
-build:
-  stage: build
-  tags: ['ace-x86_64']
-  before_script:
-    - pip3 install -r docs/requirements.txt
-  script:
-    - cd docs
-    - make html latexpdf
-    - cp build/latex/*.pdf build/html/
-    - tar cf $CI_DOCS_ARCHIVE -C build/html/ .
-  artifacts:
-    paths:
-      - build
-      - $CI_DOCS_ARCHIVE
-
-deploy:
-  variables:
-    GIT_STRATEGY: none
-  dependencies:
-    - build
-  stage: deploy
-  tags: ['docs']
-  script: echo 'Deploying docs'
-  artifacts:
-    paths:
-      - $CI_DOCS_ARCHIVE
