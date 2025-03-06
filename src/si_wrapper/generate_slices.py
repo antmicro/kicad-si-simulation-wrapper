@@ -61,20 +61,8 @@ def get_pcb_path() -> Any:
     return None
 
 
-def create_output_path(nname: str) -> tuple[str, str]:
-    """Create dedicated folder/file for given path/s."""
-    net_name = (
-        nname.removeprefix("/")
-        .replace("/", "_")
-        .replace("_P", "_PN")
-        .replace(" ", "_")
-        .replace("(", "")
-        .replace(")", "")
-        .replace("~", "neg")
-        .replace("{", "")
-        .replace("}", "")
-    )
-
+def create_output_path(net_name: str) -> tuple[str, str]:
+    """Create dedicated folder/file for given path."""
     out_dir = f"{const.OUTPUT_DIR_PATH}/{net_name}"
     out_file = f"{net_name}{const.PCB_EXTENSION}"
     if not os.path.exists(out_dir):
@@ -166,15 +154,16 @@ def main(
         settings = Settings(settings_path)
 
         logger.info("Loading Simulation Port footprint...")
-        netname = settings.get_nets()
-        pcb_slice = PCBSlice(pcb_path, netname)
+        nets = settings.get_nets()
+        pcb_slice = PCBSlice(pcb_path, nets)
         pcb_slice.check_netname()
 
         included_pads = settings.get_included_pads()
         excluded_pads = settings.get_excluded_pads()
 
         offset = settings.get_offset()
-        dir_path, file_path = create_output_path(netname[0])
+        net_name = Settings.get_filesystem_name(nets)
+        dir_path, file_path = create_output_path(net_name)
         out_path = os.path.join(dir_path, file_path)
         check_path_exit(path=out_path)
 
@@ -244,9 +233,9 @@ def main(
         # Create netinfo file
         net_info = NetInformation(f"{dir_path}/{const.NETINFO_J_PATH}")
         net_info.create_default()
-        net_info.add_attributes(netname[0], net_length_1, net_width_1, net_impedance_1, is_diff)
+        net_info.add_attributes(nets[0], net_length_1, net_width_1, net_impedance_1, is_diff)
         if is_diff is True:
-            net_info.add_attributes(netname[1], net_length_2, net_width_2, net_impedance_2, is_diff)
+            net_info.add_attributes(nets[1], net_length_2, net_width_2, net_impedance_2, is_diff)
 
         # Set and save simulation port terminators
         for i in range(len(terminate_tracks)):
@@ -348,8 +337,7 @@ def main(
                 diff_index_list.append(index)
                 excite[1] = False
 
-            netname_diff = netname[0].replace("/", "").replace("_P", "Diff")
-            port_cfg.add_differential_pair(check_diffs(diff_index_list), netname_diff)
+            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name)
 
         pcb_slice.rename_layers()
         pcb_slice.edit_diff_via_clearance(True)
@@ -357,16 +345,16 @@ def main(
 
         # Can't fill zones using the same file without saving it when changed properties of netclasses.
         # Have to save it, reopen and refill, then again save - some PCBnew bug.
-        fill_pcb1 = PCBSlice(out_path, netname)
+        fill_pcb1 = PCBSlice(out_path, nets)
         fill_pcb1.refill_zones()
         fill_pcb1.save_slice(out_path)
 
-        fill_pcb2 = PCBSlice(out_path, netname)
+        fill_pcb2 = PCBSlice(out_path, nets)
         fill_pcb2.edit_diff_via_clearance(False)
         fill_pcb2.save_slice(out_path)
 
         info_port_plcmnt = get_ports_placement_info(sp_index_1, sp_index_2, des_net_2)
-        print(f"{netname} | 1. {info_port_plcmnt[0]} | 2. {info_port_plcmnt[1]}")
+        print(f"{nets} | 1. {info_port_plcmnt[0]} | 2. {info_port_plcmnt[1]}")
 
 
 if __name__ == "__main__":

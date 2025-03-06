@@ -1,6 +1,7 @@
 """Script that contains tools for configuration files generation."""
 
 import json
+import re
 
 from si_wrapper.constant import DEFAULT_SIMULATION_J
 
@@ -57,6 +58,25 @@ class Settings:
     def get_neighbour_in_use(self) -> list[str]:
         """Get if neighbours in use."""
         return self.json_file["neighbouring_nets"]["in_use"]
+
+    @staticmethod
+    def get_filesystem_name(nets: list[str]) -> str:
+        """Get normalized net name."""
+        nn = (
+            nets[0]
+            .removeprefix("/")
+            .replace("/", "_")
+            .replace(" ", "_")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("{", "")
+            .replace("}", "")
+            .replace("~", "neg")
+        )
+        if len(nets) == 2:
+            # Replace trailing `_P` `+` or `_+` to `_Diff`
+            nn = re.sub(r"(_P)|(_?\+)$", r"_Diff", nn)
+        return nn
 
 
 class PortConfig:

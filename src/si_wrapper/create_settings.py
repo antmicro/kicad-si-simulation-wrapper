@@ -7,6 +7,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Annotated
+from si_wrapper.config import Settings
 
 import pcbnew
 import typer
@@ -63,10 +64,7 @@ class SettingCreator:
             },
         }
 
-        with open(
-            f'{self.out_path}/{nets[0].removeprefix("/").replace("/", "_").replace("_P","_PN").replace(" ","_")}.json',
-            "w",
-        ) as simulation_json:
+        with open(f"{self.out_path}/{Settings.get_filesystem_name(nets)}.json", "w") as simulation_json:
             json.dump(data, simulation_json, indent=2)
 
 
@@ -103,7 +101,11 @@ def main(
     if netclass == "all":
         for _, netinfo in board.GetNetsByNetcode().items():
             if re.search(REGEX_IMPEDANCE_PATT, netinfo.GetNetClassName()):
-                if netinfo.GetNetname()[-1] != "P" and netinfo.GetNetname()[-1] != "+":
+                if "diff" not in netinfo.GetNetClassName().lower():
+                    # Single ended trace
+                    nlist.append(netinfo.GetNetname())
+                    continue
+                if netinfo.GetNetname()[-1] not in ["P", "+"]:
                     nlist.append(netinfo.GetNetname())
 
         for n in nlist:
@@ -117,7 +119,11 @@ def main(
     elif len(netclass) > 1 and netclass != "all":
         for _, netinfo in board.GetNetsByNetcode().items():
             if netinfo.GetNetClassName() == netclass:
-                if netinfo.GetNetname()[-1] != "P" and netinfo.GetNetname()[-1] != "+":
+                if "diff" not in netinfo.GetNetClassName().lower():
+                    # Single ended trace
+                    nlist.append(netinfo.GetNetname())
+                    continue
+                if netinfo.GetNetname()[-1] not in ["P", "+"]:
                     nlist.append(netinfo.GetNetname())
 
         for n in nlist:
