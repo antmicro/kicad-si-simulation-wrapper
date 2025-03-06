@@ -20,11 +20,20 @@ app = typer.Typer()
 class SettingCreator:
     """Create settings json files for slices."""
 
-    def __init__(self, json_path: str, out_path: str) -> None:
+    def __init__(self, json_path: Path, out_path: Path) -> None:
         """Load json file."""
-        file = open(json_path)
-        self.json_file = json.load(file)
-        self.out_path = out_path
+        if json_path.exists():
+            file = open(json_path)
+            self.json_file = json.load(file)
+        else:
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+            file = open(json_path, "a")
+            self.json_file = {"board": ".", "netclass": "all", "nets": []}
+            json.dump(self.json_file, file)
+        if not out_path.exists():
+            out_path.mkdir(parents=True, exist_ok=True)
+
+        self.out_path = str(out_path)
 
     def get_board(self) -> list[str]:
         """Get name of the board."""
@@ -71,31 +80,23 @@ def get_pcb_path() -> str | None:
 
 @app.command("settings")
 def main(
-    input_file: Annotated[Path, typer.Option("--input", "-i", help="Initial .json input path")],
-    output_file: Annotated[Path, typer.Option("--output", "-o", help="Net config output path")],
+    input_file: Annotated[Path, typer.Option("--input", "-i", help="Initial .json input path")] = Path(
+        "./si-wrapper-init.json"
+    ),
+    output_file: Annotated[Path, typer.Option("--output", "-o", help="Net config output path")] = Path(
+        "./si-wrapper-cfg"
+    ),
 ):
     """Generate settings for netslices."""
     nlist = []
 
-    init_path = ""
-    out_path = ""
-
-    if input_file is not None and output_file is not None:
-        init_path = str(input_file)
-        out_path = str(output_file)
-
-    else:
-        logger.error("No given args file in current directory.")
-        sys.exit(1)
-
-    settings = SettingCreator(init_path, out_path)
+    settings = SettingCreator(input_file, output_file)
     path = get_pcb_path()
     board = pcbnew.LoadBoard(path)
 
     if path is None:
         logger.error("No .kicad_pcb file in current directory.")
         sys.exit(1)
-
     nets = settings.get_nets()
     netclass = settings.get_netclass()
 
