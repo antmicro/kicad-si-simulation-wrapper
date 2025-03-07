@@ -15,11 +15,8 @@ SIMULATION_J_CONFIG_PATH = "simulation.json"
 NETINFO_J_PATH = "netinfo.json"
 
 DEFAULT_SIMULATION_J = {
-    "format_version": "1.1",
+    "format_version": "1.2",
     "frequency": {"start": 2e8, "stop": 4e9},
     "max_steps": 50e4,
-    "via": {"filling_epsilon": 1, "plating_thickness": 50},
-    "mesh": {"xy": 50, "inter_layers": 6, "margin": {"xy": 200, "z": 200}},
-    "margin": {"xy": 500, "z": 500},
     "ports": [],
 }
