@@ -176,12 +176,12 @@ def main(
         des_net_1, des_net_2 = pcb_slice.get_des_tracks()
 
         # Get information about single selected line or for differential pairs - two lines
-        net_length_1, net_width_1, net_start_pos_1, net_end_pos_1, net_impedance_1 = pcb_slice.get_selected_track_info(
-            des_net_1
+        net_length_1, net_width_1, net_start_pos_1, net_end_pos_1, net_impedance_1, diff_impedance = (
+            pcb_slice.get_selected_track_info(des_net_1)
         )
 
         if des_net_2 != []:
-            net_length_2, net_width_2, _, _, net_impedance_2 = pcb_slice.get_selected_track_info(des_net_2)
+            net_length_2, net_width_2, _, _, net_impedance_2, _ = pcb_slice.get_selected_track_info(des_net_2)
             logger.info("Differential tracks recognized")
             is_diff = True
         else:
@@ -197,7 +197,7 @@ def main(
         # Combine list of two separate tracks into one
         logger.info("Gathering information about selected net/s...")
         designated_tracks = des_net_1 + des_net_2
-        net_length, net_width, net_start_pos, net_end_pos, net_impedance = pcb_slice.get_selected_track_info(
+        net_length, net_width, net_start_pos, net_end_pos, net_impedance, _ = pcb_slice.get_selected_track_info(
             designated_tracks
         )
 
@@ -246,7 +246,7 @@ def main(
             else:
                 plane = sp_termination_layer - 1
 
-            net_length_3, net_width_3, net_start_pos_3, net_end_pos_3, net_impedance_3 = (
+            net_length_3, net_width_3, net_start_pos_3, net_end_pos_3, net_impedance_3, _ = (
                 pcb_slice.get_selected_track_info(whole_track)
             )
             logger.debug(
@@ -263,7 +263,7 @@ def main(
         trs = pcb_slice.get_all_tracks()
         if len(trs) > 0:  # Check if exists any other
             other_pads = pcb_slice.get_other_pads()
-            other_net_length, other_net_width, other_net_start_pos, other_net_end_pos, other_net_impedance = (
+            other_net_length, other_net_width, other_net_start_pos, other_net_end_pos, other_net_impedance, _ = (
                 pcb_slice.get_selected_track_info(trs)
             )
             candidate_sp_pos_other, candidate_sp_ori_other, candidate_sp_is_flipped_other = (
@@ -337,7 +337,7 @@ def main(
                 diff_index_list.append(index)
                 excite[1] = False
 
-            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name)
+            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
 
         pcb_slice.rename_layers()
         pcb_slice.edit_diff_via_clearance(True)

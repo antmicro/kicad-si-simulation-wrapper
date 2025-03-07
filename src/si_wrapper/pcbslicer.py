@@ -98,7 +98,8 @@ class PCBSlice:
         track_widths: float = 0
         start_pos = []
         end_pos = []
-        impedance: int = 0
+        impedance: float = 0
+        diff_impedance = None
 
         try:
             for track in tracks:
@@ -109,8 +110,12 @@ class PCBSlice:
                 track_widths = track.GetWidth()
                 impedance_str = re.search("^\d+", track.GetNetClassName())
                 assert impedance_str is not None
-
-                impedance = int(impedance_str.group())
+                imp = float(impedance_str.group())
+                if "se" in track.GetNetClassName().lower():
+                    impedance = imp
+                else:
+                    impedance = 50
+                    diff_impedance = imp
 
         except NameError:
             logger.exception("Traces cannot be found")
@@ -120,7 +125,8 @@ class PCBSlice:
             int(track_widths),
             list(start_pos),
             list(end_pos),
-            int(impedance),
+            float(impedance),
+            diff_impedance,
         ]
 
     def get_pads(self) -> list:
