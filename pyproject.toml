@@ -10,7 +10,6 @@ dependencies = [
   "matplotlib>=3.5.0",
   "coloredlogs>=15.0.1",
   "pyyaml",
-  "Pillow>=10.0.1",
   "typer>=0.12.3"
 ]
 

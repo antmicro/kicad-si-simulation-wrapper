@@ -5,8 +5,6 @@ import os
 import subprocess
 import sys
 
-import PIL.Image
-import PIL.ImageOps
 import typer
 
 logger = logging.getLogger(__name__)
@@ -60,57 +58,36 @@ def process_gbrs_to_pngs() -> None:
 def in_gbr2png(gerber_filenames: list[str], edge_filename: str, output_filename: str) -> None:
     """Generate PNG from gerber file.
 
-    Generates PNG of a gerber using gerbv and convert.
+    Generates PNG of a gerber using gerbv.
     Edge cuts gerber is used to crop the image correctly.
     """
     dpi = 1000
 
-    not_cropped_name = f"{output_filename.split('.')[0]}_not_cropped.png"
     foreground_array = [" --foreground=#ffffff"] * len(gerber_filenames)
-    foreground_array.append(" --foreground=#0000ff")
+    foreground_array.append(" --foreground=#000000")
 
     gerbv_command = f'gerbv {" ".join(gerber_filenames)} {edge_filename}'
     gerbv_command += f' {" ".join(foreground_array)}'
-    gerbv_command += f" -o {not_cropped_name}"
-    gerbv_command += f" --dpi={dpi} --export=png -a"
+    gerbv_command += f" -o {output_filename}"
+    gerbv_command += f" --dpi={dpi} --export=png -a  --border=0"
     subprocess.call(gerbv_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
-
-    setup_imagic(not_cropped_name, output_filename)
 
 
 def fb_gbr2png(gerber_filename: str, edge_filename: str, output_filename: str) -> None:
     """Generate PNG from gerber file.
 
-    Generates PNG of a gerber using gerbv and convert.
+    Generates PNG of a gerber using gerbv.
     Edge cuts gerber is used to crop the image correctly.
     """
     dpi = 1000
 
     logger.debug("Generating PNG for %s", gerber_filename)
-    not_cropped_name = f"{output_filename.split('.')[0]}_not_cropped.png"
 
     gerbv_command = f"gerbv {gerber_filename} {edge_filename}"
-    gerbv_command += " --background=#000000 --foreground=#ffffffff --foreground=#00000f"
-    gerbv_command += f" -o {not_cropped_name}"
-    gerbv_command += f" --dpi={dpi} --export=png -a"
-    subprocess.call(gerbv_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
-
-    setup_imagic(not_cropped_name, output_filename)
-
-
-def setup_imagic(not_cropped_name: str, output_filename: str) -> None:
-    """Set imagic settings."""
-    not_cropped_image = PIL.Image.open(not_cropped_name)
-    cropped_image = not_cropped_image.crop(not_cropped_image.getbbox())
-    img = PIL.ImageOps.invert(cropped_image)
-    img.save(output_filename)
-
-    imagic_command = f"convert {output_filename}"
-    imagic_command += " -threshold 50% -transparent white -blur 1 +antialias"
-    imagic_command += f" {output_filename}"
-    subprocess.call(imagic_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
-
-    os.remove(not_cropped_name)
+    gerbv_command += " --background=#000000 --foreground=#ffffffff --foreground=#000000"
+    gerbv_command += f" -o {output_filename}"
+    gerbv_command += f" --dpi={dpi} --export=png -a --border=0"
+    subprocess.call(gerbv_command, shell=True)
 
 
 @app.command("gerber2png")
