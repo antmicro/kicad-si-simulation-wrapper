@@ -86,8 +86,6 @@ def main(
     ),
 ):
     """Generate settings for netslices."""
-    nlist = []
-
     settings = SettingCreator(input_file, output_file)
     path = get_pcb_path()
     board = pcbnew.LoadBoard(path)
@@ -98,49 +96,26 @@ def main(
     nets = settings.get_nets()
     netclass = settings.get_netclass()
 
-    if netclass == "all":
+    if len(nets) == 0:
+        nets = []
         for _, netinfo in board.GetNetsByNetcode().items():
-            if re.search(REGEX_IMPEDANCE_PATT, netinfo.GetNetClassName()):
+            if netinfo.GetNetClassName() == netclass or (
+                netclass == "all" and re.search(REGEX_IMPEDANCE_PATT, netinfo.GetNetClassName())
+            ):
                 if "diff" not in netinfo.GetNetClassName().lower():
                     # Single ended trace
-                    nlist.append(netinfo.GetNetname())
+                    nets.append(netinfo.GetNetname())
                     continue
                 if netinfo.GetNetname()[-1] not in ["P", "+"]:
-                    nlist.append(netinfo.GetNetname())
+                    nets.append(netinfo.GetNetname())
 
-        for n in nlist:
-            if n[-1] == "N":
-                settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
-            elif n[-1] == "-":
-                settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
-            elif n[-1] != "N" or n[-1] != "P":
-                settings.new_config([n])
-
-    elif len(netclass) > 1 and netclass != "all":
-        for _, netinfo in board.GetNetsByNetcode().items():
-            if netinfo.GetNetClassName() == netclass:
-                if "diff" not in netinfo.GetNetClassName().lower():
-                    # Single ended trace
-                    nlist.append(netinfo.GetNetname())
-                    continue
-                if netinfo.GetNetname()[-1] not in ["P", "+"]:
-                    nlist.append(netinfo.GetNetname())
-
-        for n in nlist:
-            if n[-1] == "N":
-                settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
-            elif n[-1] == "-":
-                settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
-            elif n[-1] != "N" or n[-1] != "P":
-                settings.new_config([n])
-    else:
-        for n in nets:
-            if n[-1] == "N":
-                settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
-            elif n[-1] == "-":
-                settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
-            elif n[-1] != "N" or n[-1] != "P":
-                settings.new_config([n])
+    for n in nets:
+        if n[-1] == "N":
+            settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
+        elif n[-1] == "-":
+            settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
+        elif n[-1] != "N" or n[-1] != "P":
+            settings.new_config([n])
 
 
 if __name__ == "__main__":

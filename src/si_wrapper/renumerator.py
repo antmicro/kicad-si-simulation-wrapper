@@ -6,11 +6,13 @@ import os
 from si_wrapper.config import NetInformation, PortConfig
 from si_wrapper.pcbslicer import PCBSlice, const
 import typer
+
 # import subprocess
 
 
 logger = logging.getLogger(__name__)
 app = typer.Typer()
+
 
 def get_pcb_path() -> str | None:
     """Check if file with .kicad_pcb extension exists in current folder."""
