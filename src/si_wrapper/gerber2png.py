@@ -84,7 +84,7 @@ def fb_gbr2png(gerber_filename: str, edge_filename: str, output_filename: str) -
     logger.debug("Generating PNG for %s", gerber_filename)
 
     gerbv_command = f"gerbv {gerber_filename} {edge_filename}"
-    gerbv_command += " --background=#000000 --foreground=#ffffffff --foreground=#000000"
+    gerbv_command += " --background=#FFFFFF --foreground=#000000FF --foreground=#FFFFFF"
     gerbv_command += f" -o {output_filename}"
     gerbv_command += f" --dpi={dpi} --export=png -a --border=0"
     subprocess.call(gerbv_command, shell=True)
