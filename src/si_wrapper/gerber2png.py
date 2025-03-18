@@ -63,8 +63,9 @@ def in_gbr2png(gerber_filenames: list[str], edge_filename: str, output_filename:
     """
     dpi = 1000
 
-    foreground_array = [" --foreground=#ffffff"] * len(gerber_filenames)
-    foreground_array.append(" --foreground=#000000")
+    foreground_array = ["--background=#FFFFFF"]
+    foreground_array.append(" --foreground=#000000FF" * len(gerber_filenames))
+    foreground_array.append(" --foreground=#FFFFFF")
 
     gerbv_command = f'gerbv {" ".join(gerber_filenames)} {edge_filename}'
     gerbv_command += f' {" ".join(foreground_array)}'
