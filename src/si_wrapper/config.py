@@ -75,7 +75,7 @@ class Settings:
         )
         if len(nets) == 2:
             # Replace trailing `_P` `+` or `_+` to `_Diff`
-            nn = re.sub(r"(_P)|(_?\+)$", r"_Diff", nn)
+            nn = re.sub(r"((_P)|(_?\+))$", r"_Diff", nn)
         return nn
 
 
