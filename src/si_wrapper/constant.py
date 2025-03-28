@@ -20,3 +20,4 @@ DEFAULT_SIMULATION_J = {
     "max_steps": 50e4,
     "ports": [],
 }
+SQRT2 = 2**0.5

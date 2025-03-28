@@ -202,17 +202,13 @@ def main(
         )
 
         logger.info("Gathering information about pads...")
-        pads, board_origin = pcb_slice.get_pads()
+        pads = pcb_slice.get_pads()
 
         # Get orientation of the track/s to place simulation ports
         logger.info("Checking tracks orientation...")
-        candidate_sp_pos1, candidate_sp_orient1, candidate_sp_is_flipped_1 = pcb_slice.get_track_orientation(
-            des_net_1, pads, included_pads, excluded_pads
-        )
+        portpads1 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[0])
         if des_net_2 != []:
-            candidate_sp_pos2, candidate_sp_orient2, candidate_sp_is_flipped_2 = pcb_slice.get_track_orientation(
-                des_net_2, pads, included_pads, excluded_pads
-            )
+            portpads2 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[1])
 
         if neighbour_inuse:
             logger.info("Looking for neighbouring tracks...")
@@ -256,7 +252,7 @@ def main(
                 | SP{i+1} | Layer: {sp_termination_layer}"
             )
             port_cfg.add_simulation_port(
-                i + 1, net_width_3, 500000, net_impedance_3, sp_termination_layer, plane, False
+                i + 1, net_width_3 / 1000, 250, net_impedance_3, sp_termination_layer, plane, False
             )
 
         # Get information about other nets for placing simulation ports
@@ -266,75 +262,39 @@ def main(
             other_net_length, other_net_width, other_net_start_pos, other_net_end_pos, other_net_impedance, _ = (
                 pcb_slice.get_selected_track_info(trs)
             )
-            candidate_sp_pos_other, candidate_sp_ori_other, candidate_sp_is_flipped_other = (
-                pcb_slice.get_track_orientation(trs, other_pads, included_pads, excluded_pads)
-            )
+            other_nets = {n.GetNetname() for n in trs}
+            portpads_other = pcb_slice.get_port_pads(other_pads, included_pads, excluded_pads, other_nets)
             # Hiding other pads
-            if settings.is_pad_other():
-                pcb_slice.hide_pads(other_pads, candidate_sp_pos_other)
+            # if settings.is_pad_other():
+            #     pcb_slice.hide_pads(other_pads, candidate_sp_pos_other)
 
         # Hiding designated pads
-        if settings.is_pad_designated():
-            pcb_slice.hide_pads(pads, candidate_sp_pos1)
-            if des_net_2 != []:
-                pcb_slice.hide_pads(pads, candidate_sp_pos2)
+        # if settings.is_pad_designated():
+        #     pcb_slice.hide_pads(pads, candidate_sp_pos1)
+        #     if des_net_2 != []:
+        #         pcb_slice.hide_pads(pads, candidate_sp_pos2)
 
         if len(trs) > 0:
-            sp_index_other, layer_flip_other = pcb_slice.place_simulation_port(
-                candidate_sp_pos_other, candidate_sp_ori_other, candidate_sp_is_flipped_other
-            )
+            sp_index_other, layer_flip_other = pcb_slice.place_simulation_port(portpads_other)
 
-        sp_index_1, layer_flip_1 = pcb_slice.place_simulation_port(
-            candidate_sp_pos1, candidate_sp_orient1, candidate_sp_is_flipped_1
-        )
+        sp_index_1, layer_flip_1 = pcb_slice.place_simulation_port(portpads1)
         if des_net_2 != []:
-            sp_index_2, layer_flip_2 = pcb_slice.place_simulation_port(
-                candidate_sp_pos2, candidate_sp_orient2, candidate_sp_is_flipped_2
-            )
+            sp_index_2, layer_flip_2 = pcb_slice.place_simulation_port(portpads2)
 
         diff_index_list = []
         if len(trs) > 0:
-            for index in sp_index_other:
-                lyr, _ = (
-                    pcb_slice.get_num_layers("B.Cu")
-                    if layer_flip_other[sp_index_other.index(index)] is True
-                    else pcb_slice.get_num_layers("F.Cu")
-                )
-                plane = 1 if lyr == 0 else lyr - 1
-                port_cfg.add_simulation_port(index, other_net_width, 500000, other_net_impedance, lyr, plane, False)
-                diff_index_list.append(index)
-        for index in sp_index_1:
-            lyr, _ = (
-                pcb_slice.get_num_layers("B.Cu")
-                if layer_flip_1[sp_index_1.index(index)] is True
-                else pcb_slice.get_num_layers("F.Cu")
-            )
-            plane = 1 if lyr == 0 else lyr - 1
-            logger.debug(
-                f"Designated Net: Length: {net_length_1} \
-                | Width: {net_width_1} \
-                | Impedance: {net_impedance_1} \
-                | SP{index} | Layer: {lyr}"
-            )
-            port_cfg.add_simulation_port(index, net_width_1, 500000, net_impedance_1, lyr, plane, excite[0])
-            diff_index_list.append(index)
+            for pp in portpads_other:
+                port_cfg.add_port_pad(pcb_slice, pp, other_net_impedance, False)
+
+        for pp in portpads1:
+            port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
+            diff_index_list.append(pp.idx)
             excite[0] = False
+
         if des_net_2 != []:
-            for index in sp_index_2:
-                lyr, _ = (
-                    pcb_slice.get_num_layers("B.Cu")
-                    if layer_flip_2[sp_index_2.index(index)] is True
-                    else pcb_slice.get_num_layers("F.Cu")
-                )
-                plane = 1 if lyr == 0 else lyr - 1
-                logger.debug(
-                    f"Designated Net: Length: {net_length_2} \
-                    | Width: {net_width_2} \
-                    | Impedance: {net_impedance_2} \
-                    | SP{index} | Layer: {lyr}"
-                )
-                port_cfg.add_simulation_port(index, net_width_2, 500000, net_impedance_2, lyr, plane, excite[1])
-                diff_index_list.append(index)
+            for pp in portpads2:
+                port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
+                diff_index_list.append(pp.idx)
                 excite[1] = False
 
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)

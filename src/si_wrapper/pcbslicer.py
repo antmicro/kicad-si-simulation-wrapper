@@ -1,16 +1,54 @@
 """Library file containing class for generating and editing netslices."""
 
+from __future__ import annotations
+
 import logging
 import re
 import sys
-from typing import Any, Iterable
-
+from typing import Any, Iterable, List, Set
+from dataclasses import dataclass
 import numpy as np
 import pcbnew
 
 import si_wrapper.constant as const
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Point:
+    """Class representing 2D point."""
+
+    x: float = 0
+    y: float = 0
+
+    def distance(self, rhs: Point) -> float:
+        """Get euclidean distance between two points."""
+        return ((self.x - rhs.x) ** 2 + (self.y - rhs.y) ** 2) ** 0.5
+
+    def rotation(self, rhs: Point) -> float:
+        """Get orientation of vector connecting two points."""
+        return np.arctan2((rhs.x - self.x), (rhs.y - self.y)) * (180.0 / np.pi) - 180.0
+
+
+@dataclass
+class PortPad:
+    """Class representing Pad that may be also simulation port."""
+
+    position: Point
+    """Pad position"""
+    flipped: bool
+    """False- pad on F.Cu; True- pad on B.Cu"""
+    port_rotation: float
+    """Rotation of simulation port (based on trace that exits pad)"""
+    pad_rotation: float
+    """Rotation of pad"""
+    size: Point
+    """Size of pad"""
+    multi_connected: bool
+    """True if there is more than one trace that exits pad"""
+    idx: int = 0
+    """Port ordinal number"""
 
 
 class PCBSlice:
@@ -22,11 +60,14 @@ class PCBSlice:
 
     def __init__(self, board_pth: str, netname: list) -> None:
         """Initialize variables."""
+        print("######test")
         self.board = pcbnew.LoadBoard(board_pth)
+        print("######test")
         self.netname = netname
         self.GNDnet = self.board.GetNetsByName().find("GND").value()[1]
 
         fp_name = const.FP_NAME
+        self.static_sp_index = 1
         self.SimPortFootprint = pcbnew.FootprintLoad(const.FP_LIB_PATH, fp_name)
         self.SimPortFootprint.Reference().SetVisible(False)
 
@@ -129,13 +170,9 @@ class PCBSlice:
             diff_impedance,
         ]
 
-    def get_pads(self) -> list:
+    def get_pads(self) -> List[pcbnew.PAD]:
         """Return pads of chosen NET."""
-        board_origin = self.board.GetDesignSettings().GetAuxOrigin()
-        pads = [pad for pad in self.board.GetPads() if pad.GetNetname() in self.netname]
-        # pads = [pad for pad in self.board.GetPads() if pad.GetNetClassName() == self.netclass]
-
-        return [list(pads), np.float16(pcbnew.ToMM(board_origin))]
+        return [pad for pad in self.board.GetPads() if pad.GetNetname() in self.netname]
 
     def get_other_pads(self) -> list:
         """Get all pads but impedance controlled."""
@@ -177,7 +214,7 @@ class PCBSlice:
         for zone in to_remove:
             self.board.Remove(zone)
 
-        self.replace_resistors_and_capacitors()
+        # self.replace_resistors_and_capacitors()
 
         filler = pcbnew.ZONE_FILLER(self.board)
         filler.Fill(zones)
@@ -575,11 +612,7 @@ class PCBSlice:
     @staticmethod
     def calculate_orientation(start_track: tuple[Any, Any], end_track: tuple[Any, Any]) -> int:
         """Return orientation."""
-        return int(
-            round(
-                (np.arctan2((end_track[0] - start_track[0]), (end_track[1] - start_track[1])) * (180.0 / np.pi) - 180.0)
-            )
-        )
+        return int(round(Point(*start_track).rotation(Point(*end_track))))
 
     @staticmethod
     def is_in_circle(center: list, radius: float, x: int, y: int) -> bool:
@@ -587,56 +620,68 @@ class PCBSlice:
         d = np.sqrt((center[0] - x) ** 2 + (center[1] - y) ** 2)
         return d <= radius
 
-    def get_track_orientation(self, tracks, pads: list, included_pads: list, excluded_pads: list) -> tuple:
-        """Allow to get the orientation of the track nearest pad."""
-        position = []
-        orientation = []
-        flip = []
-        current_pos = 0
+    @staticmethod
+    def pad_exit_angle(pad: pcbnew.Pad, track: pcbnew.PCB_TRACK) -> int:
+        """Get trace at which trace exits pad."""
+        pad_pos = pcbnew.ToMM(pad.GetCenter())
+        far_track_end = track.GetStart() if pad.HitTest(track.GetEnd()) else track.GetEnd()
+        far_track_end = far_track_end if not isinstance(track, pcbnew.PCB_ARC) else track.GetMid()
+        return PCBSlice.calculate_orientation(pad_pos, pcbnew.ToMM(far_track_end))
 
+    def get_port_pads(
+        self, pads: list, included_pads: list, excluded_pads: list, net_name: List[str] | Set[str]
+    ) -> List[PortPad]:
+        """Get parameters of pads necessary for port placement."""
         layers = [pcbnew.F_Cu, pcbnew.B_Cu]
+        pad_ports = []
+        tracks = [track for track in self.board.GetTracks() if track.GetNetname() in net_name]
+        for pad in pads:
+            if pad.GetNetname() not in net_name:
+                continue
+            if pad.GetLayer() not in layers:
+                continue
+            multi_connected = False
+            pad_touching_tracks = [
+                track
+                for track in tracks
+                if track.GetLayer() in layers
+                and (pad.HitTest(track.GetStart()) + pad.HitTest(track.GetEnd())) == 1
+                or (isinstance(track, pcbnew.PCB_VIA) and pad.HitTest(track.GetStart()) and pad.HitTest(track.GetEnd()))
+            ]
+            pad_pos = pcbnew.ToMM(pad.GetCenter())
+            if pad_touching_tracks:
+                out_track = max(pad_touching_tracks, key=pcbnew.PCB_TRACK.GetLength)
+                track_angles = [PCBSlice.pad_exit_angle(pad, track) for track in pad_touching_tracks]
+                orientation = PCBSlice.pad_exit_angle(pad, out_track)
+                if any(abs(ang - orientation) > 30 for ang in track_angles):
+                    multi_connected = True
+            else:
+                # Pad has no connected traces OR traces are passthrough
+                multi_connected = True
+                orientation = pad.GetOrientation().AsDegrees()
 
-        for track in tracks:
-            if track.GetLayer() in layers:
-                s_tr = pcbnew.ToMM(track.GetStart())
-                e_tr = pcbnew.ToMM(track.GetEnd())
-                for pad in pads:
-                    if self.is_in_circle(
-                        pcbnew.ToMM(pad.GetBoundingBox().GetCenter()),
-                        0.01,
-                        s_tr[0],
-                        s_tr[1],
-                    ) or self.is_in_circle(
-                        pcbnew.ToMM(pad.GetBoundingBox().GetCenter()),
-                        0.01,
-                        e_tr[0],
-                        e_tr[1],
-                    ):
-                        # if (pad.GetBoundingBox().Contains(pcbnew.VECTOR2I(pcbnew.wxPointMM(s_tr[0], s_tr[1]))) or
-                        #     pad.GetBoundingBox().Contains(pcbnew.VECTOR2I(pcbnew.wxPointMM(e_tr[0], e_tr[1])))):
-                        flip.append(pad.IsFlipped())
+            size = Point(*pcbnew.ToMM(pad.GetSize()))
+            pad_orientation = pad.GetOrientation().AsDegrees()
+            if size.x > size.y:
+                size = Point(size.y, size.x)
+                pad_orientation += 90
+            if (
+                (len(included_pads) and pad.GetParent().GetReference() in included_pads)
+                or (len(excluded_pads) and pad.GetParent().GetReference() not in excluded_pads)
+                or (len(included_pads) == 0 and len(excluded_pads) == 0)
+            ):
+                pad_ports.append(
+                    PortPad(
+                        Point(*pad_pos),
+                        pad.IsFlipped(),
+                        orientation,
+                        pad_orientation,
+                        size,
+                        multi_connected,
+                    )
+                )
 
-                        if self.euclidean_distance(pad.GetPosition(), s_tr) > self.euclidean_distance(
-                            pad.GetPosition(), e_tr
-                        ):
-                            current_pos = e_tr
-                            phi = self.calculate_orientation(e_tr, s_tr)
-                        else:
-                            current_pos = s_tr
-                            phi = self.calculate_orientation(s_tr, e_tr)
-
-                        if len(included_pads) and pad.GetParent().GetReference() in included_pads:
-                            position.append(current_pos)
-                            orientation.append(phi)
-                        elif len(excluded_pads) and pad.GetParent().GetReference() not in excluded_pads:
-                            position.append(current_pos)
-                            orientation.append(phi)
-                        elif len(included_pads) == 0 and len(excluded_pads) == 0:
-                            position.append(current_pos)
-                            orientation.append(phi)
-                        break
-
-        return position, orientation, flip
+        return pad_ports
 
     def find_next_orthogonal(self, current_track: pcbnew.PCB_TRACK) -> pcbnew.PCB_TRACK:
         """Find next orthogonal track that can contain Simulation Port."""
@@ -781,54 +826,100 @@ class PCBSlice:
                                         new_track_d = new_track.Duplicate()
                                         self.board.Add(new_track_d)
 
-    def place_simulation_port(
-        self, position: list[Any], orientation: list[Any], is_flipped: list[bool]
-    ) -> tuple[list[int], list[Any]]:
+    def place_simulation_port(self, portpads: List[PortPad]) -> tuple[list[int], list[Any]]:
         """Place Simulation Ports on the beginning and ending of the board."""
         index_list = []
         flip_list = []
-
-        pof = list(set(zip(position, orientation, is_flipped)))
-        # print(pof)
-
-        for i in range(len(pof)):
-            x = pof[i][0][0]
-            y = pof[i][0][1]
-            orient = pof[i][1]
-            flip = pof[i][2]
-
-            # if orient % 90 != 0:
-            #     continue
-            # else:
-            #     orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
-            #     self.SimPortFootprint.SetOrientation(orient_eda)
-
+        all_signal_pads = [
+            Point(*pcbnew.ToMM(pad.GetCenter())) for pad in self.board.GetPads() if pad.GetNetname() in self.netname
+        ]
+        single_connected_count = sum([1 for pp in portpads if not pp.multi_connected])
+        for pp in portpads:
+            if single_connected_count >= 2 and pp.multi_connected:
+                # We have enough potential ports so We can ignore pads that have multiple traces connected,
+                # as they are most likely passthrough and not endpoints
+                continue
+            signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
+            closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
+            x = pp.position.x
+            y = pp.position.y
+            orient = pp.port_rotation
+            flip = pp.flipped
+            closest_ang = pp.position.rotation(closest_pad)
+            orient = 45 * round(orient / 45)
+            dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
+            dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
+            orient = orient if orient > 0 else orient + 360
+            closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
             match orient:
-                case 0:
-                    y = y + 0.5
-                case 90 | -270:
-                    x = x + 0.5
-                case -90 | 270:
-                    x = x - 0.5
-                case -180:
-                    y = y - 0.5
-                case -45 | -315:
-                    y = y + 0.5
+                case 0 | 360:
+                    y += pp.size.y / 2
                     orient = 0
-                case -135 | -225:
-                    y = y - 0.5
+                case 180:
+                    y -= pp.size.y / 2
                     orient = 180
+                case 90:
+                    x += pp.size.y / 2
+                    orient = 90
+                case 270:
+                    x -= pp.size.y / 2
+                    orient = 270
+                case _:
+                    pp.size.y /= 2
+                    pp.size.x *= const.SQRT2
+                    flip_y = 1
+                    flip_x = 1
+                    if 270 >= orient >= 90:
+                        flip_y = -1
+                    if orient >= 180:
+                        flip_x = -1
+                    omap1 = {45: 0, 135: 180, 225: 180, 315: 0}
+                    omap2 = {45: 90, 135: 90, 225: 270, 315: 270}
+
+                    if (flip_y == -1) ^ (270 > closest_ang > 90):
+                        x += flip_x * dy
+                        y += flip_y * dx
+                        orient = omap2[orient]
+                    else:
+                        y += flip_y * dy
+                        x += flip_x * dx
+                        orient = omap1[orient]
 
             orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
-            self.SimPortFootprint.SetOrientation(orient_eda)
 
-            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(x, y))
-            self.SimPortFootprint.SetReference(f"SP{PCBSlice.static_sp_index}")
             sp_instance = self.SimPortFootprint.Duplicate()
+            sp_instance.SetPosition(pcbnew.VECTOR2I_MM(x, y))
+            sp_instance.SetReference(f"SP{self.static_sp_index}")
+
+            segment = pcbnew.PCB_SHAPE(self.board)
+            segment.SetShape(pcbnew.S_RECT)
+            segment.SetLayer(pcbnew.Eco1_User)
+            segment.SetWidth(pcbnew.FromMM(0.01))
+            segment.SetStart(pcbnew.VECTOR2I_MM(x - pp.size.x / 2, y))
+            segment.SetEnd(pcbnew.VECTOR2I_MM(x + pp.size.x / 2, y - pp.size.y))
+            seg2 = segment.Duplicate()
+            sp_instance.Add(segment)
+            segment.SetStart(pcbnew.VECTOR2I_MM(x - 1.2 * pp.size.x / 2, y + 0.1 * pp.size.y))
+            segment.SetEnd(pcbnew.VECTOR2I_MM(x + 1.2 * pp.size.x / 2, y - 1.1 * pp.size.y))
+            seg2.SetLayer(pcbnew.Eco2_User)
+            sp_instance.Add(seg2)
+            sp_instance.SetOrientation(orient_eda)
             self.board.Add(sp_instance)
-            index_list.append(PCBSlice.static_sp_index)
+            for fp in self.board.GetFootprints():
+                if (
+                    not fp.Pads().empty()
+                    and fp.Pads()[0].GetNetname() not in self.netname
+                    and fp.Pads()[0].HitTest(
+                        sp_instance.GetBoundingBox(False, False),
+                        False,
+                    )
+                ):
+                    self.board.Remove(fp)
+
+            index_list.append(self.static_sp_index)
             flip_list.append(flip)
-            PCBSlice.static_sp_index += 1
+            pp.idx = self.static_sp_index
+            self.static_sp_index += 1
 
         return index_list, flip_list
 
@@ -964,13 +1055,14 @@ class PCBSlice:
 
     def remove_pads(self, condition: list) -> None:
         """Remove pads from board."""
-        for footprint in self.board.GetFootprints():
-            for pad in footprint.Pads():
-                if condition is None:
-                    self.board.Remove(footprint)
-                else:
-                    if pad.GetNetname() not in condition and pad.GetNetname not in self.netname:
-                        self.board.Remove(footprint)
+        pass
+        # for footprint in self.board.GetFootprints():
+        #     for pad in footprint.Pads():
+        #         if condition is None:
+        #             self.board.Remove(footprint)
+        #         else:
+        #             if pad.GetNetname() not in condition and pad.GetNetname not in self.netname:
+        #                 self.board.Remove(footprint)
 
     def renumerate_simulation_ports(self) -> list[int]:
         """Renumerate ports that were changed on the board."""

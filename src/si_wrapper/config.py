@@ -1,9 +1,13 @@
 """Script that contains tools for configuration files generation."""
 
 import json
+import logging
 import re
 
 from si_wrapper.constant import DEFAULT_SIMULATION_J
+from si_wrapper.pcbslicer import PortPad, PCBSlice
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -127,12 +131,30 @@ class PortConfig:
         with open(self.path, "w") as write_data:
             json.dump(edit_data, write_data, indent=2)
 
+    def add_port_pad(
+        self,
+        pcb_slice: PCBSlice,
+        port: PortPad,
+        impedance: int,
+        excite: bool,
+    ) -> None:
+        """Add simulation port to configuration file."""
+        layer, _ = pcb_slice.get_num_layers("B.Cu") if port.flipped is True else pcb_slice.get_num_layers("F.Cu")
+        plane = 1 if layer == 0 else layer - 1
+        logger.debug(
+            f"Designated Net: \
+            | Width: {port.size.x}mm \
+            | Impedance: {impedance} \
+            | SP{port.idx+1} | Layer: {layer}"
+        )
+        self.add_simulation_port(port.idx + 1, port.size.x * 1000, port.size.y * 1000, impedance, layer, plane, excite)
+
     def add_simulation_port(
         self,
         number: int,
         width: float,
         length: float,
-        impedance: int,
+        impedance: float,
         layer: int,
         plane: int,
         excite: bool,
@@ -142,8 +164,8 @@ class PortConfig:
         port_pattern = [
             {
                 "number": number,
-                "width": int(width / 1000),
-                "length": int(length / 1000),
+                "width": width,
+                "length": length,
                 "impedance": impedance,
                 "layer": layer,
                 "plane": plane,
@@ -155,10 +177,10 @@ class PortConfig:
 
     def add_differential_pair(self, indexes: list, name: str, diff_impedance: float) -> None:
         """Add differential pair to config."""
-        start_p = indexes[0] - 1
-        stop_p = indexes[1] - 1
-        start_n = indexes[2] - 1
-        stop_n = indexes[3] - 1
+        start_p = indexes[0]
+        stop_p = indexes[1]
+        start_n = indexes[2]
+        stop_n = indexes[3]
 
         diff_keyword = "differential_pairs"
         diff_pattern = [
