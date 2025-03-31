@@ -219,8 +219,8 @@ def main(
         logger.info("Terminating Tracks...")
         terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos], offset)
 
-        if neighbour_inuse:
-            pcb_slice.remove_pads(nearest_net_names)
+        # if neighbour_inuse:
+        #     pcb_slice.remove_pads(nearest_net_names)
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
@@ -284,17 +284,19 @@ def main(
         diff_index_list = []
         if len(trs) > 0:
             for pp in portpads_other:
+                print("OTHER:", pp)
                 port_cfg.add_port_pad(pcb_slice, pp, other_net_impedance, False)
 
         for pp in portpads1:
+            print("@1", pp)
             port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
-            diff_index_list.append(pp.idx)
+            diff_index_list.append(pp.idx - 1)
             excite[0] = False
 
         if des_net_2 != []:
             for pp in portpads2:
                 port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
-                diff_index_list.append(pp.idx)
+                diff_index_list.append(pp.idx - 1)
                 excite[1] = False
 
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)

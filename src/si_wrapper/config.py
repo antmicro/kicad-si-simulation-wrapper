@@ -145,9 +145,9 @@ class PortConfig:
             f"Designated Net: \
             | Width: {port.size.x}mm \
             | Impedance: {impedance} \
-            | SP{port.idx+1} | Layer: {layer}"
+            | SP{port.idx} | Layer: {layer}"
         )
-        self.add_simulation_port(port.idx + 1, port.size.x * 1000, port.size.y * 1000, impedance, layer, plane, excite)
+        self.add_simulation_port(port.idx, port.size.x * 1000, port.size.y * 1000, impedance, layer, plane, excite)
 
     def add_simulation_port(
         self,
@@ -164,8 +164,8 @@ class PortConfig:
         port_pattern = [
             {
                 "number": number,
-                "width": width,
-                "length": length,
+                "width": round(width, 2),
+                "length": round(length, 2),
                 "impedance": impedance,
                 "layer": layer,
                 "plane": plane,

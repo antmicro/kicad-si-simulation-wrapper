@@ -681,6 +681,11 @@ class PCBSlice:
                     )
                 )
 
+        single_connected_count = sum([1 for pp in pad_ports if not pp.multi_connected])
+        if single_connected_count >= 2:
+            # We have enough potential ports so We can ignore pads that have multiple traces connected,
+            # as they are most likely passthrough and not endpoints
+            pad_ports = list(filter(lambda x: not x.multi_connected, pad_ports))
         return pad_ports
 
     def find_next_orthogonal(self, current_track: pcbnew.PCB_TRACK) -> pcbnew.PCB_TRACK:
@@ -833,12 +838,7 @@ class PCBSlice:
         all_signal_pads = [
             Point(*pcbnew.ToMM(pad.GetCenter())) for pad in self.board.GetPads() if pad.GetNetname() in self.netname
         ]
-        single_connected_count = sum([1 for pp in portpads if not pp.multi_connected])
         for pp in portpads:
-            if single_connected_count >= 2 and pp.multi_connected:
-                # We have enough potential ports so We can ignore pads that have multiple traces connected,
-                # as they are most likely passthrough and not endpoints
-                continue
             signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
             closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
             x = pp.position.x
@@ -1055,14 +1055,13 @@ class PCBSlice:
 
     def remove_pads(self, condition: list) -> None:
         """Remove pads from board."""
-        pass
-        # for footprint in self.board.GetFootprints():
-        #     for pad in footprint.Pads():
-        #         if condition is None:
-        #             self.board.Remove(footprint)
-        #         else:
-        #             if pad.GetNetname() not in condition and pad.GetNetname not in self.netname:
-        #                 self.board.Remove(footprint)
+        for footprint in self.board.GetFootprints():
+            for pad in footprint.Pads():
+                if condition is None:
+                    self.board.Remove(footprint)
+                else:
+                    if pad.GetNetname() not in condition and pad.GetNetname not in self.netname:
+                        self.board.Remove(footprint)
 
     def renumerate_simulation_ports(self) -> list[int]:
         """Renumerate ports that were changed on the board."""
