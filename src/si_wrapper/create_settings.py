@@ -110,12 +110,22 @@ def main(
                     nets.append(netinfo.GetNetname())
 
     for n in nets:
-        if n[-1] == "N":
-            settings.new_config([n[0:-1] + "P", n[0:-1] + "N"])
-        elif n[-1] == "-":
-            settings.new_config([n[0:-1] + "+", n[0:-1] + "-"])
-        elif n[-1] != "N" or n[-1] != "P":
+        for _, netinfo in board.GetNetsByNetcode().items():
+            if netinfo.GetNetname() == n:
+                diff = "diff" in netinfo.GetNetClassName().lower()
+                break
+        else:
+            # specified net not found on PCB
+            logger.warning(f"Net {n} not found on PCB- ignoring")
+            continue
+
+        if not diff:
             settings.new_config([n])
+        else:
+            if n[-1] == "N":
+                settings.new_config([n[0:-1] + "P", n])
+            elif n[-1] == "-":
+                settings.new_config([n[0:-1] + "+", n])
 
 
 if __name__ == "__main__":
