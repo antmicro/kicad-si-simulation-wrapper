@@ -277,6 +277,12 @@ def main(
         if len(trs) > 0:
             sp_index_other, layer_flip_other = pcb_slice.place_simulation_port(portpads_other)
 
+        if des_net_2 != []:
+            if len(portpads1) == 2 and len(portpads2) == 2:
+                if portpads1[0].distance(portpads2[0]) > portpads1[0].distance(portpads2[1]):
+                    # Ensure that excited ports of diff pair are next to each other (on the same trace side)
+                    portpads1.reverse()
+
         sp_index_1, layer_flip_1 = pcb_slice.place_simulation_port(portpads1)
         if des_net_2 != []:
             sp_index_2, layer_flip_2 = pcb_slice.place_simulation_port(portpads2)
@@ -284,11 +290,9 @@ def main(
         diff_index_list = []
         if len(trs) > 0:
             for pp in portpads_other:
-                print("OTHER:", pp)
                 port_cfg.add_port_pad(pcb_slice, pp, other_net_impedance, False)
 
         for pp in portpads1:
-            print("@1", pp)
             port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
             diff_index_list.append(pp.idx - 1)
             excite[0] = False
@@ -302,7 +306,7 @@ def main(
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
 
         pcb_slice.rename_layers()
-        pcb_slice.edit_diff_via_clearance(True)
+        # pcb_slice.edit_diff_via_clearance(True)
         pcb_slice.save_slice(out_path)
 
         # Can't fill zones using the same file without saving it when changed properties of netclasses.
@@ -311,9 +315,9 @@ def main(
         fill_pcb1.refill_zones()
         fill_pcb1.save_slice(out_path)
 
-        fill_pcb2 = PCBSlice(out_path, nets)
-        fill_pcb2.edit_diff_via_clearance(False)
-        fill_pcb2.save_slice(out_path)
+        # fill_pcb2 = PCBSlice(out_path, nets)
+        # fill_pcb2.edit_diff_via_clearance(False)
+        # fill_pcb2.save_slice(out_path)
 
         info_port_plcmnt = get_ports_placement_info(sp_index_1, sp_index_2, des_net_2)
         print(f"{nets} | 1. {info_port_plcmnt[0]} | 2. {info_port_plcmnt[1]}")

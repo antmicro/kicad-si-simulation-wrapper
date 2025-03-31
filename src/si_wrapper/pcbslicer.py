@@ -9,6 +9,7 @@ from typing import Any, Iterable, List, Set
 from dataclasses import dataclass
 import numpy as np
 import pcbnew
+from math import inf
 
 import si_wrapper.constant as const
 
@@ -36,7 +37,7 @@ class PortPad:
     """Class representing Pad that may be also simulation port."""
 
     position: Point
-    """Pad position"""
+    """Pad origin coordinates"""
     flipped: bool
     """False- pad on F.Cu; True- pad on B.Cu"""
     port_rotation: float
@@ -49,6 +50,12 @@ class PortPad:
     """True if there is more than one trace that exits pad"""
     idx: int = 0
     """Port ordinal number"""
+
+    def distance(self, rhs: PortPad) -> float:
+        """Get distance between origins of two pads, pads that are on different layers have infinite distance."""
+        if self.flipped != rhs.flipped:
+            return inf
+        return self.position.distance(rhs.position)
 
 
 class PCBSlice:
