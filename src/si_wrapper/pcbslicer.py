@@ -672,6 +672,8 @@ class PCBSlice:
             if size.x > size.y:
                 size = Point(size.y, size.x)
                 pad_orientation += 90
+            if pad_orientation > 360:
+                pad_orientation -= 360
             if (
                 (len(included_pads) and pad.GetParent().GetReference() in included_pads)
                 or (len(excluded_pads) and pad.GetParent().GetReference() not in excluded_pads)
@@ -858,6 +860,18 @@ class PCBSlice:
             dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
             orient = orient if orient > 0 else orient + 360
             closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
+            ort_angles = [0, 90, 180, 270, 360]
+            ort_case = orient in ort_angles and pp.pad_rotation not in ort_angles
+            if ort_case:
+                pad_port_rot_diff = min(abs(orient - pp.pad_rotation - 360), abs(orient - pp.pad_rotation))
+                if pad_port_rot_diff > 90:
+                    pp.pad_rotation += 180
+                    if pp.pad_rotation > 360:
+                        pp.pad_rotation -= 360
+                if pp.pad_rotation > orient:
+                    orient += 45
+                else:
+                    orient -= 45
             match orient:
                 case 0 | 360:
                     y += pp.size.y / 2
