@@ -67,9 +67,7 @@ class PCBSlice:
 
     def __init__(self, board_pth: str, netname: list) -> None:
         """Initialize variables."""
-        print("######test")
         self.board = pcbnew.LoadBoard(board_pth)
-        print("######test")
         self.netname = netname
         self.GNDnet = self.board.GetNetsByName().find("GND").value()[1]
 
@@ -645,13 +643,16 @@ class PCBSlice:
         for pad in pads:
             if pad.GetNetname() not in net_name:
                 continue
-            if pad.GetLayer() not in layers:
+            b_cu, f_cu = self.board.GetLayerID("B.Cu"), self.board.GetLayerID("F.Cu")
+            pad_layer = pad.GetPrincipalLayer()
+            pad_layer = pad_layer if not pad.IsFlipped() else (b_cu if pad_layer == f_cu else f_cu)
+            if pad_layer not in layers:
                 continue
             multi_connected = False
             pad_touching_tracks = [
                 track
                 for track in tracks
-                if track.GetLayer() in layers
+                if track.GetLayer() == pad_layer
                 and (pad.HitTest(track.GetStart()) + pad.HitTest(track.GetEnd())) == 1
                 or (isinstance(track, pcbnew.PCB_VIA) and pad.HitTest(track.GetStart()) and pad.HitTest(track.GetEnd()))
             ]
@@ -848,13 +849,16 @@ class PCBSlice:
             Point(*pcbnew.ToMM(pad.GetCenter())) for pad in self.board.GetPads() if pad.GetNetname() in self.netname
         ]
         for pp in portpads:
-            signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
-            closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
             x = pp.position.x
             y = pp.position.y
             orient = pp.port_rotation
             flip = pp.flipped
-            closest_ang = pp.position.rotation(closest_pad)
+            signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
+            closest_ang = 0.0
+            if len(signal_pads) >= 2:
+                closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
+                closest_ang = pp.position.rotation(closest_pad)
+
             orient = 45 * round(orient / 45)
             dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
             dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
