@@ -1081,7 +1081,7 @@ class PCBSlice:
                 if condition is None:
                     self.board.Remove(footprint)
                 else:
-                    if pad.GetNetname() not in condition and pad.GetNetname not in self.netname:
+                    if pad.GetNetname() not in condition and pad.GetNetname() not in self.netname:
                         self.board.Remove(footprint)
 
     def renumerate_simulation_ports(self) -> list[int]:

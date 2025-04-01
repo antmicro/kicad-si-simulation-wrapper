@@ -219,8 +219,8 @@ def main(
         logger.info("Terminating Tracks...")
         terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos], offset)
 
-        # if neighbour_inuse:
-        #     pcb_slice.remove_pads(nearest_net_names)
+        if neighbour_inuse:
+            pcb_slice.remove_pads(nearest_net_names)
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
