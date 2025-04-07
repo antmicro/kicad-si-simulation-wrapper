@@ -48,6 +48,17 @@ class PortPad:
     """Size of pad"""
     multi_connected: bool
     """True if there is more than one trace that exits pad"""
+    opt_rating: int
+    """How optimal is placement of this port.
+    
+    There are 3 conditions for optimal port placement:
+    - pad is vertical or horizontal
+    - pad is rectangle
+    - trace exits at the same angle as pad is oriented
+    0 - all conditions fulfilled, 3 - none of conditions fulfilled
+    """
+    ort_case: bool
+    """Pad is not vertical/horizontal, but trace that exits it is"""
     idx: int = 0
     """Port ordinal number"""
 
@@ -675,6 +686,17 @@ class PCBSlice:
                 pad_orientation += 90
             if pad_orientation > 360:
                 pad_orientation -= 360
+
+            orientation = 45 * round(orientation / 45)
+            orientation = orientation if orientation > 0 else orientation + 360
+            ort_angles = [0, 90, 180, 270, 360]
+            ort_case = orientation in ort_angles and pad_orientation not in ort_angles
+            optimality_rating = 0
+            pad_shape = pad.GetShape()
+            rect_shapes = [pcbnew.PAD_SHAPE_CHAMFERED_RECT, pcbnew.PAD_SHAPE_RECTANGLE, pcbnew.PAD_SHAPE_ROUNDRECT]
+            optimality_rating += (pad_shape not in rect_shapes)
+            optimality_rating += (pad_orientation not in ort_angles) + (ort_case or orientation not in ort_angles)
+
             if (
                 (len(included_pads) and pad.GetParent().GetReference() in included_pads)
                 or (len(excluded_pads) and pad.GetParent().GetReference() not in excluded_pads)
@@ -688,6 +710,8 @@ class PCBSlice:
                         pad_orientation,
                         size,
                         multi_connected,
+                        optimality_rating,
+                        ort_case,
                     )
                 )
 
@@ -859,14 +883,10 @@ class PCBSlice:
                 closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
                 closest_ang = pp.position.rotation(closest_pad)
 
-            orient = 45 * round(orient / 45)
             dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
             dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
-            orient = orient if orient > 0 else orient + 360
             closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
-            ort_angles = [0, 90, 180, 270, 360]
-            ort_case = orient in ort_angles and pp.pad_rotation not in ort_angles
-            if ort_case:
+            if pp.ort_case:
                 pad_port_rot_diff = min(abs(orient - pp.pad_rotation - 360), abs(orient - pp.pad_rotation))
                 if pad_port_rot_diff > 90:
                     pp.pad_rotation += 180

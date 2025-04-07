@@ -282,6 +282,16 @@ def main(
                 if portpads1[0].distance(portpads2[0]) > portpads1[0].distance(portpads2[1]):
                     # Ensure that excited ports of diff pair are next to each other (on the same trace side)
                     portpads1.reverse()
+                if (
+                    portpads1[0].opt_rating + portpads2[0].opt_rating
+                    > portpads1[1].opt_rating + portpads2[1].opt_rating
+                ):
+                    # Ensure that most optimally placed port is excited
+                    portpads1.reverse()
+                    portpads2.reverse()
+        elif len(portpads1) == 2 and portpads1[0].opt_rating > portpads1[1].opt_rating:
+            # Ensure that most optimally placed port is excited
+            portpads1.reverse()
 
         sp_index_1, layer_flip_1 = pcb_slice.place_simulation_port(portpads1)
         if des_net_2 != []:
