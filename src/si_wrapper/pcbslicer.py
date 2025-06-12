@@ -832,7 +832,7 @@ class PCBSlice:
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
         new_via.SetViaType(pcbnew.VIATYPE_BLIND_BURIED)
-        new_via.SetWidth(width_t)
+        new_via.SetFrontWidth(width_t)
         new_via.SetNet(self.GNDnet)
         new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
         self.board.Add(new_via)
@@ -973,19 +973,15 @@ class PCBSlice:
 
     def get_num_layers(self, layer_name: str) -> tuple[Any, Any]:
         """Get number of layers."""
+        layer_count = self.board.GetCopperLayerCount()
         if layer_name == "B.Cu":
             return (
                 self.board.GetCopperLayerCount() - 1,
-                self.board.GetCopperLayerCount(),
+                layer_count,
             )
-
-        return self.board.GetLayerID(layer_name), self.board.GetCopperLayerCount()
-
-    def rename_layers(self) -> None:
-        """Rename Layers to standard format of In{l}.Cu."""
-        copper_layer_count = self.board.GetCopperLayerCount()
-        for cnt in range(1, copper_layer_count - 1):
-            self.board.SetLayerName(cnt, f"In{cnt}.Cu")
+        if layer_name == "F.Cu":
+            return 0, layer_count
+        return int((self.board.GetLayerID(layer_name) - 2) / 2), layer_count
 
     def find_nearest_to_designated_net(
         self,

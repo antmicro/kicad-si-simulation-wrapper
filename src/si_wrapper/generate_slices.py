@@ -305,7 +305,6 @@ def main(
 
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
 
-        pcb_slice.rename_layers()
         pcb_slice.save_slice(out_path)
 
         # Can't fill zones using the same file without saving it when changed properties of netclasses.
