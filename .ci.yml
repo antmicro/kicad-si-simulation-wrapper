@@ -1,7 +1,6 @@
 include:
-  - project: repositories/antmicro-pcb-release-ci-template
-    ref: main
-    file: .docs.yml
+  - antmicro-pcb-release-ci-template@main:.docs.yml
+  - gerber2ems-ci@main:.ci.yml
 
 stages:
   - test
@@ -10,33 +9,28 @@ stages:
 
 test:
   stage: test
-  image: $CI_REGISTRY/$CI_KIMAGE
   before_script:
     - mkdir -p logs
     - apt-get -qqy update >> logs/debian_install.log
     - apt-get -qqy update --fix-missing >> logs/debian_install.log
     - apt-get -qqy install git python3 python3-pip gerbv >> logs/debian_install.log
-    - git clone https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
+    - git clone --depth 1 https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
   script:
     - export PATH=$HOME/.local/bin:$PATH
     - python3 -m pip install . --break-system-packages --root-user-action=ignore
     - cd sodimm-ddr5-tester
     - echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
-    - mkdir net_configs
-    - si-wrapper settings -i init.json -o net_configs
-    - |
-      for file in net_configs/*; do
-        si-wrapper slice -f $file
-      done
+    - si-wrapper settings -i init.json
+    - si-wrapper slice
     - cd slices
     - |
       for dir in ./*/; do
-        cd $dir
+        pushd $dir
         mkdir fab
         kicad-cli pcb export gerbers --no-protel-ext -o fab/ *.kicad_pcb
         kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ *.kicad_pcb
         si-wrapper gerber2png
-        cd ../
+        popd
       done
 
   artifacts:
