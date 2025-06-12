@@ -160,6 +160,8 @@ class PCBSlice:
 
         try:
             for track in tracks:
+                if isinstance(track, pcbnew.PCB_VIA):
+                    continue
                 start_pos.append(list(pcbnew.ToMM(track.GetStart())))
                 end_pos.append(list(pcbnew.ToMM(track.GetEnd())))
 
@@ -694,7 +696,7 @@ class PCBSlice:
             optimality_rating = 0
             pad_shape = pad.GetShape()
             rect_shapes = [pcbnew.PAD_SHAPE_CHAMFERED_RECT, pcbnew.PAD_SHAPE_RECTANGLE, pcbnew.PAD_SHAPE_ROUNDRECT]
-            optimality_rating += (pad_shape not in rect_shapes)
+            optimality_rating += pad_shape not in rect_shapes
             optimality_rating += (pad_orientation not in ort_angles) + (ort_case or orientation not in ort_angles)
 
             if (
@@ -823,10 +825,10 @@ class PCBSlice:
             self.SimPortFootprint.SetOrientation(orient_eda)
 
             self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
-            self.SimPortFootprint.SetReference(f"SP{PCBSlice.static_sp_index}")
+            self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
             sp_instance = self.SimPortFootprint.Duplicate()
             self.board.Add(sp_instance)
-            PCBSlice.static_sp_index += 1
+            self.static_sp_index += 1
             return 0
 
         new_via = pcbnew.PCB_VIA(self.board)
@@ -1159,7 +1161,8 @@ class PCBSlice:
 
         # Append drawings to remove
         for d in self.board.GetDrawings():
-            to_remove.append(d)
+            if d.GetLayer() != pcbnew.Edge_Cuts:
+                to_remove.append(d)
 
         # Remove elements from list
         for element in to_remove:
