@@ -3,14 +3,14 @@
 import logging
 import os
 import sys
-from typing import Any, Annotated, List
+from typing import Any, Annotated, List, Dict
 from pathlib import Path
 
 import coloredlogs
 import typer
 
 from si_wrapper.config import NetInformation, PortConfig, Settings
-from si_wrapper.pcbslicer import PCBSlice, const, netclass_list
+from si_wrapper.pcbslicer import PCBSlice, const, netclass_list, PortPad
 
 logger = logging.getLogger(__name__)
 app = typer.Typer()
@@ -129,6 +129,7 @@ def main(
     debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False,
 ) -> None:
     """Generate slices for chosen PCB."""
+    setup_logging(debug)
     pcb_path = get_pcb_path()
     if pcb_path is None:
         logger.error("No .kicad_pcb file in current directory.")
@@ -148,7 +149,6 @@ def main(
 
         sp_index_1: List = []
         sp_index_2: List = []
-        setup_logging(debug)
 
         settings_path = str(cfile)
         settings = Settings(settings_path)
@@ -224,7 +224,7 @@ def main(
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
-        port_cfg.create_default_config()
+        port_cfg.create_default_config(net_name)
 
         # Create netinfo file
         net_info = NetInformation(f"{dir_path}/{const.NETINFO_J_PATH}")
@@ -304,6 +304,31 @@ def main(
                 excite[1] = False
 
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
+
+        pp_grouped: Dict[str, List[PortPad]] = {}
+        if len(trs) > 0:
+            for pp in portpads_other:
+                nn = Settings.get_filesystem_name([pp.net, ""])
+                if nn not in pp_grouped:
+                    pp_grouped[nn] = []
+                pp_grouped[nn].append(pp)
+
+        for nn, ppg in pp_grouped.items():
+            ppg = list(sorted(ppg, key=lambda x: x.net))
+            if len(ppg) != 4:
+                continue
+
+            if ppg[0].distance(ppg[2]) > ppg[0].distance(ppg[3]):
+                # Ensure that excited ports of diff pair are next to each other (on the same trace side)
+                ppg[0], ppg[1] = ppg[1], ppg[0]
+
+            for track in pcb_slice.board.GetTracks():
+                if track.GetNetname() == ppg[0].net:
+                    _, _, net_start_pos, net_end_pos, net_impedance, diff_impedance = pcb_slice.get_selected_track_info(
+                        [track]
+                    )
+                    break
+            port_cfg.add_differential_pair(check_diffs([p.idx -1  for p in ppg]), nn, diff_impedance)
 
         pcb_slice.save_slice(out_path)
 

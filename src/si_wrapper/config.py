@@ -78,8 +78,8 @@ class Settings:
             .replace("~", "neg")
         )
         if len(nets) == 2:
-            # Replace trailing `_P` `+` or `_+` to `_Diff`
-            nn = re.sub(r"((_P)|(_?\+))$", r"_Diff", nn)
+            # Replace trailing `_P`, `+`, `_+`, `_N`, `-` or `_-` to `_Diff`
+            nn = re.sub(r"((_P)|(_?\+)|(_N)|(_?\-))$", r"_Diff", nn)
         return nn
 
 
@@ -103,9 +103,10 @@ class PortConfig:
         with open(self.path, "w") as write_data:
             json.dump(edit_data, write_data, indent=2)
 
-    def create_default_config(self) -> None:
+    def create_default_config(self, net_name: str) -> None:
         """Create default configuration file."""
         default_simulation_data = DEFAULT_SIMULATION_J
+        default_simulation_data["trace_under_test"] = net_name
 
         with open(self.path, "w") as simulation_json:
             json.dump(default_simulation_data, simulation_json, indent=2)

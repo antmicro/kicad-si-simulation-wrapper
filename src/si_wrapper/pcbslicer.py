@@ -59,6 +59,8 @@ class PortPad:
     """
     ort_case: bool
     """Pad is not vertical/horizontal, but trace that exits it is"""
+    net: str
+    """Port net name"""
     idx: int = 0
     """Port ordinal number"""
 
@@ -712,6 +714,7 @@ class PCBSlice:
                         multi_connected,
                         optimality_rating,
                         ort_case,
+                        pad.GetNetname(),
                     )
                 )
 
@@ -953,6 +956,7 @@ class PCBSlice:
                 if (
                     not fp.Pads().empty()
                     and fp.Pads()[0].GetNetname() not in self.netname
+                    and fp.Pads()[0].GetNetname() != pp.net
                     and fp.Pads()[0].HitTest(
                         sp_instance.GetBoundingBox(False, False),
                         False,

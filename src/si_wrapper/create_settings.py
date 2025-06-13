@@ -48,18 +48,24 @@ class SettingCreator:
         """Get netclass filed from file."""
         return self.json_file["netclass"]
 
-    def new_config(self, nets: list) -> None:
+    def new_config(self, nets: list, expn: bool) -> None:
         """Create new configuration file for single net."""
+        if expn:
+            board_offset = {"top": 6, "bottom": 6, "left": 6, "right": 6}
+            neighbouring_nets = {"offset": 3.0, "common_points": 1}
+        else:
+            board_offset = {"top": 1, "bottom": 1, "left": 1, "right": 1}
+            neighbouring_nets = {"offset": 0.1, "common_points": 100}
+
         data = {
             "designated_nets": nets,
-            "board_offset": {"top": 1, "bottom": 1, "left": 1, "right": 1},
+            "board_offset": board_offset,
             "included_pads": [],
             "excluded_pads": [],
             "hidden_pads": {"designated_net": True, "other_nets": True},
             "neighbouring_nets": {
+                **neighbouring_nets,
                 "in_use": True,
-                "offset": 0.01,
-                "common_points": 100,
                 "netlist": [],
             },
         }
@@ -84,6 +90,9 @@ def main(
     output_file: Annotated[Path, typer.Option("--output", "-o", help="Net config output path")] = Path(
         "./si-wrapper-cfg"
     ),
+    exp_neighbors: Annotated[
+        Path, typer.Option("--exp_neighbors", "-n", help="Use extended neighborhood definitions")
+    ] = Path("./si-wrapper-cfg"),
 ) -> None:
     """Generate settings for netslices."""
     settings = SettingCreator(input_file, output_file)
@@ -120,12 +129,12 @@ def main(
             continue
 
         if not diff:
-            settings.new_config([n])
+            settings.new_config([n], exp_neighbors)
         else:
             if n[-1] == "N":
-                settings.new_config([n[0:-1] + "P", n])
+                settings.new_config([n[0:-1] + "P", n], exp_neighbors)
             elif n[-1] == "-":
-                settings.new_config([n[0:-1] + "+", n])
+                settings.new_config([n[0:-1] + "+", n], exp_neighbors)
 
 
 if __name__ == "__main__":
