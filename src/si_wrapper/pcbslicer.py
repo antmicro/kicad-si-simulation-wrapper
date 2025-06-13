@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
-from typing import Any, Iterable, List, Set
+from typing import Any, Iterable, List, Set, Optional
 from dataclasses import dataclass
 import numpy as np
 import pcbnew
@@ -1129,14 +1129,16 @@ class PCBSlice:
         ref_num = "".join(filter(str.isdigit, ref))
         return int(ref_num) if ref_num else ref
 
-    def purge_all_but_designated(self) -> None:
+    def purge_all_but_designated(self, nets: Optional[List[str]] = None) -> None:
         """Remove all elements from board, except designated nets and Edge Cuts Layer."""
         # Init variables
         to_remove = []
 
+        if nets is None:
+            nets = self.netname
         # Iterate through tracks and remove all, except designated ones
         for track in self.board.GetTracks():
-            if track.GetNetname() not in self.netname:
+            if track.GetNetname() not in nets:
                 self.board.Delete(track)
 
         # Append footprints to remove

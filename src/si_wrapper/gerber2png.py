@@ -1,100 +1,74 @@
 """Script that creates bitmaps from gerbers."""
 
 import logging
-import os
 import subprocess
 import sys
-
+from typing import Annotated
+from pathlib import Path
+from si_wrapper.generate_slices import setup_logging
 import typer
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 app = typer.Typer()
 
 
-def process_gbrs_to_pngs() -> None:
-    """Process all gerber files to PNG's.
+def process_gbrs(img_dir: Optional[Path] = None) -> None:
+    """Process all gerber files to images.
 
     Finds edge cuts gerber as well as copper gerbers in `fab` directory.
-    Processes copper gerbers into PNG's using edge_cuts for framing.
+    Processes copper gerbers into PNG/SVG's using edge_cuts for framing.
     """
-    img_dir = "."
+    cwd = Path.cwd()
+    img_dir = cwd
+    fab_dir = cwd / "fab"
 
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
+    img_dir.mkdir(exist_ok=True, parents=True)
 
-    files = os.listdir(os.path.join(os.getcwd(), "fab"))
-    edge = next(filter(lambda name: "Edge_Cuts.gbr" in name, files), None)
+    edge = next(fab_dir.glob("*Edge_Cuts.gbr"), None)
     if edge is None:
         logger.error("No edge_cuts gerber found")
         sys.exit(1)
 
-    layers = [
-        list(filter(lambda name: "F_Cu.gbr" in name, files))[0],
-        list(filter(lambda name: "B_Cu.gbr" in name, files))[0],
-    ]
-    layers_in = list(filter(lambda name: "-In" in name, files))
-
-    if len(layers) == 0:
-        logger.warning("No copper gerbers found")
+    layers = {
+        "F_Cu": list(fab_dir.glob("*F_Cu.gbr"))[0:0],
+        "B_Cu": list(fab_dir.glob("*B_Cu.gbr"))[0:0],
+        "In_Cu": list(fab_dir.glob("*-In*")),
+    }
 
     # Split top and bootom into two images
-    for name in layers:
-        output = name.split("-")[-1].split(".")[0] + ".png"
-        fb_gbr2png(
-            os.path.join(os.getcwd(), "fab", name),
-            os.path.join(os.getcwd(), "fab", edge),
-            os.path.join(os.getcwd(), img_dir, output),
-        )
-
     # Reduce inner layers to one image
-    output = "In_Cu.png"
-    in_gbr2png(
-        [os.path.join(os.getcwd(), "fab", name) for name in layers_in],
-        os.path.join(os.getcwd(), "fab", edge),
-        os.path.join(os.getcwd(), img_dir, output),
-    )
+    for name, in_file in layers.items():
+        gerbv_call(in_file, fab_dir / edge, img_dir / name)
 
 
-def in_gbr2png(gerber_filenames: list[str], edge_filename: str, output_filename: str) -> None:
-    """Generate PNG from gerber file.
+def gerbv_call(gerber_filenames: List[Path], edge_filename: Path, output_filename: Path) -> None:
+    """Generate PNG/SVG from gerber file.
 
-    Generates PNG of a gerber using gerbv.
+    Generates PNG/SVG of a gerber(s) using gerbv.
     Edge cuts gerber is used to crop the image correctly.
     """
+    color_array = ["--background=#FFFFFF"]
+    color_array.append(" --foreground=#000000FF" * len(gerber_filenames))
+    color_array.append(" --foreground=#FFFFFF")
+    cmd = ["gerbv"] + gerber_filenames + [edge_filename, "-a", "-o"] + color_array
+
     dpi = 1000
+    cmd_png = cmd + [output_filename.with_suffix(".png"), f"--dpi={dpi}", "--export=png", "--border=0"]
+    logger.debug(f"Generating PNG, CMD: {cmd_png}")
+    subprocess.call(cmd_png, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    foreground_array = ["--background=#FFFFFF"]
-    foreground_array.append(" --foreground=#000000FF" * len(gerber_filenames))
-    foreground_array.append(" --foreground=#FFFFFF")
-
-    gerbv_command = f'gerbv {" ".join(gerber_filenames)} {edge_filename}'
-    gerbv_command += f' {" ".join(foreground_array)}'
-    gerbv_command += f" -o {output_filename}"
-    gerbv_command += f" --dpi={dpi} --export=png -a  --border=0"
-    subprocess.call(gerbv_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
-
-
-def fb_gbr2png(gerber_filename: str, edge_filename: str, output_filename: str) -> None:
-    """Generate PNG from gerber file.
-
-    Generates PNG of a gerber using gerbv.
-    Edge cuts gerber is used to crop the image correctly.
-    """
-    dpi = 1000
-
-    logger.debug("Generating PNG for %s", gerber_filename)
-
-    gerbv_command = f"gerbv {gerber_filename} {edge_filename}"
-    gerbv_command += " --background=#FFFFFF --foreground=#000000FF --foreground=#FFFFFF"
-    gerbv_command += f" -o {output_filename}"
-    gerbv_command += f" --dpi={dpi} --export=png -a --border=0"
-    subprocess.call(gerbv_command, shell=True)
+    cmd_svg = cmd + [output_filename.with_suffix(".svg"), "--export=svg", "--border=4"]
+    logger.debug(f"Generating SVG, CMD: {cmd_svg}")
+    subprocess.call(cmd_svg, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 @app.command("gerber2png")
-def main() -> None:
-    """Process gerbers to png."""
-    process_gbrs_to_pngs()
+
+def main(debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False) -> None:
+    """Process gerbers to png/svg."""
+    setup_logging(debug)
+    process_gbrs(Path.cwd())
 
 
 if __name__ == "__main__":
