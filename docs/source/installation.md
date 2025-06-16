@@ -2,9 +2,9 @@
 
 ## Requirements
 
-`si-wrapper` requires `KiCad 7.0.x`, `python >= 3.10`, `pip` and `gerbv`.
+`si-wrapper` requires `KiCad 9.0.x`, `python >= 3.10`, `pip` and `gerbv`.
 
-> Note: The provided scripts were tested with KiCad 7.0.11 and Debian 12.
+> Note: The provided scripts were tested with KiCad 9.0.2 and Debian 12.
 
 ### Installation (Debian)
 
