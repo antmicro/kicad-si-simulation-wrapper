@@ -167,7 +167,7 @@ class PCBSlice:
 
                 track_length += track.GetLength()
                 track_widths = track.GetWidth()
-                impedance_str = re.search("^\d+", track.GetNetClassName())
+                impedance_str = re.search(r"^\d+", track.GetNetClassName())
                 assert impedance_str is not None
                 imp = float(impedance_str.group())
                 if "se" in track.GetNetClassName().lower():
@@ -431,7 +431,7 @@ class PCBSlice:
                 if (pcbnew.ToMM(fp_x) - 1 < x < pcbnew.ToMM(fp_x) + 1) and (
                     pcbnew.ToMM(fp_y) - 1 < y < pcbnew.ToMM(fp_y) + 1
                 ):
-                    if re.search("SP\d+", str(footprint.GetReference())) is None:
+                    if re.search(r"SP\d+", str(footprint.GetReference())) is None:
                         self.board.Remove(footprint)
 
     def remove_footprints(self, edges: list) -> list:
@@ -775,7 +775,7 @@ class PCBSlice:
         return new_track
 
     @staticmethod
-    def euclidean_distance(pad_pos: pcbnew.wxPoint, track_pos: np.ndarray[Any, np.dtype[Any]]):
+    def euclidean_distance(pad_pos: pcbnew.wxPoint, track_pos: np.ndarray[Any, np.dtype[Any]]) -> float:
         """Return value of the distance between two points."""
         pad_pos = np.array(pcbnew.ToMM(pad_pos))
         track_pos = np.array(track_pos)
@@ -840,7 +840,7 @@ class PCBSlice:
 
     def replace_resistors_and_capacitors(self) -> None:
         """Replace every R0 and Capacitor with an track."""
-        pattern = "((C_\d*[munp])|(R_0R))_.*"
+        pattern = r"((C_\d*[munp])|(R_0R))_.*"
         defined_width = 150000
 
         pad2: pcbnew.PCB_PAD_T = 0
@@ -875,7 +875,7 @@ class PCBSlice:
         for pp in portpads:
             x = pp.position.x
             y = pp.position.y
-            orient = pp.port_rotation
+            orient = int(pp.port_rotation)
             signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
             closest_ang = 0.0
             if len(signal_pads) >= 2:
@@ -1109,14 +1109,14 @@ class PCBSlice:
         old_names: list[int] = []
         sp_list = []
         for fp in self.board.GetFootprints():
-            if re.search("SP\d+", str(fp.GetReference())):
+            if re.search(r"SP\d+", str(fp.GetReference())):
                 # print(fp.GetReference())
                 sp_list.append(fp)
 
         sp_list.sort(key=lambda x: self.sort_key(x.GetReference()))
 
         for sp in sp_list:
-            old_names.append(int(re.findall("\d+", str(sp.GetReference()))[0]))
+            old_names.append(int(re.findall(r"\d+", str(sp.GetReference()))[0]))
             # print(old_names[sp_index])
             # print(sp.GetReference())
             sp.SetReference(f"SP{sp_index}")
@@ -1141,8 +1141,8 @@ class PCBSlice:
 
         # Append footprints to remove
         for fp in self.board.Footprints():
-            if re.search("SP\d+", str(fp.GetReference())):
-                fp.SetReference(int(re.findall("\d+", str(fp.GetReference()))[0]))
+            if re.search(r"SP\d+", str(fp.GetReference())):
+                fp.SetReference(int(re.findall(r"\d+", str(fp.GetReference()))[0]))
                 fp.Reference().SetVisible(True)
             else:
                 to_remove.append(fp)

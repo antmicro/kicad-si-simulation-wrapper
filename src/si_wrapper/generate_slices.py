@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer()
 
 
-def setup_logging(debug) -> None:
+def setup_logging(debug: bool) -> None:
     """Set up logging based on command line arguments."""
     level = logging.INFO
 
@@ -89,7 +89,7 @@ def check_diffs(indexes: list) -> list:
     return indexes
 
 
-def get_ports_placement_info(first_net_ports: list, second_net_ports: list, is_diff) -> tuple[str, str]:
+def get_ports_placement_info(first_net_ports: list, second_net_ports: list, is_diff: bool) -> tuple[str, str]:
     """Return information about placement of simulation ports."""
     first_net_info = ""
     second_net_info = ""
@@ -127,7 +127,7 @@ def main(
     config_file: Annotated[Path, typer.Option("--file", "-f", help="Path to settings file")] = Path("si-wrapper-cfg"),
     list_nets: Annotated[bool, typer.Option("--list", "-l", help="List Net classes with corresponding nets")] = False,
     debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False,
-):
+) -> None:
     """Generate slices for chosen PCB."""
     pcb_path = get_pcb_path()
     if pcb_path is None:

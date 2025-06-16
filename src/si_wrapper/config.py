@@ -18,13 +18,13 @@ class Settings:
         file = open(json_path)
         self.json_file = json.load(file)
 
-    def get_offset(self) -> list[str]:
+    def get_offset(self) -> list[float]:
         """Get offset values."""
         return [
-            self.json_file["board_offset"]["right"],
-            self.json_file["board_offset"]["left"],
-            self.json_file["board_offset"]["bottom"],
-            self.json_file["board_offset"]["top"],
+            float(self.json_file["board_offset"]["right"]),
+            float(self.json_file["board_offset"]["left"]),
+            float(self.json_file["board_offset"]["bottom"]),
+            float(self.json_file["board_offset"]["top"]),
         ]
 
     def get_nets(self) -> list[str]:
@@ -47,13 +47,13 @@ class Settings:
         """Get if other pads hidden."""
         return self.json_file["hidden_pads"]["other_nets"]
 
-    def get_neighbour_offset(self) -> list[str]:
+    def get_neighbour_offset(self) -> float:
         """Get neighbour offset."""
-        return self.json_file["neighbouring_nets"]["offset"]
+        return float(self.json_file["neighbouring_nets"]["offset"])
 
-    def get_neighbour_common_points(self) -> list[str]:
+    def get_neighbour_common_points(self) -> int:
         """Get neighbour comon points."""
-        return self.json_file["neighbouring_nets"]["common_points"]
+        return int(self.json_file["neighbouring_nets"]["common_points"])
 
     def get_neighbour_list(self) -> list[str]:
         """Get neighbour netlist."""

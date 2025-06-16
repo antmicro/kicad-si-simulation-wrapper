@@ -5,8 +5,8 @@ import os
 FP_NAME = "Simulation_Port"
 FP_LIB_PATH = f"{os.path.dirname(os.path.abspath(__file__))}/footprint"
 
-REGEX_IMPEDANCE_PATT = "^\d+Ohm-(\w|\d|-)*"
-REGEX_CAP_RES0_PATT = "((C_\d*[munp])|(R_0R))_.*"
+REGEX_IMPEDANCE_PATT = r"^\d+Ohm-(\w|\d|-)*"
+REGEX_CAP_RES0_PATT = r"((C_\d*[munp])|(R_0R))_.*"
 
 PCB_EXTENSION = ".kicad_pcb"
 OUTPUT_DIR_PATH = "slices"

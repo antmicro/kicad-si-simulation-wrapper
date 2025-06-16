@@ -84,7 +84,7 @@ def main(
     output_file: Annotated[Path, typer.Option("--output", "-o", help="Net config output path")] = Path(
         "./si-wrapper-cfg"
     ),
-):
+) -> None:
     """Generate settings for netslices."""
     settings = SettingCreator(input_file, output_file)
     path = get_pcb_path()

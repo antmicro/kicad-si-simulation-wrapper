@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 
 from si_wrapper.config import NetInformation, PortConfig
 from si_wrapper.pcbslicer import PCBSlice, const
@@ -23,7 +24,7 @@ def get_pcb_path() -> str | None:
 
 
 @app.command("renumerate")
-def main():
+def main() -> None:
     """Renumerate placed Simulation Ports on the board and update simulation.json file."""
     # Open .json file with information
     net_config = NetInformation(const.NETINFO_J_PATH)
@@ -31,6 +32,10 @@ def main():
 
     # Find .kicad_pcb file
     pcb_path = get_pcb_path()
+
+    if pcb_path is None:
+        logger.error("No .kicad_pcb file in current directory.")
+        sys.exit(1)
 
     # Load simulation.json file
     port_config = PortConfig(const.SIMULATION_J_CONFIG_PATH)

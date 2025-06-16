@@ -1,8 +1,10 @@
 include:
   - antmicro-pcb-release-ci-template@main:.docs.yml
   - gerber2ems-ci@main:.ci.yml
+  - gerber2ems-ci@main:.verification.yml
 
 stages:
+  - code-checks
   - test
   - build
   - deploy
@@ -38,3 +40,11 @@ test:
     paths:
       - sodimm-ddr5-tester
       - logs
+
+simulate_examples:
+  when: never
+  stage: test
+
+tuttest:
+  when: never
+  stage: test

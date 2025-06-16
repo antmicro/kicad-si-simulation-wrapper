@@ -1,3 +1,5 @@
+"""si_wrapper entry point."""
+
 import typer
 
 from si_wrapper import gerber2png, generate_slices, create_settings, renumerator

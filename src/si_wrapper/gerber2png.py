@@ -92,7 +92,7 @@ def fb_gbr2png(gerber_filename: str, edge_filename: str, output_filename: str) -
 
 
 @app.command("gerber2png")
-def main():
+def main() -> None:
     """Process gerbers to png."""
     process_gbrs_to_pngs()
 
