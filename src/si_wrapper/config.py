@@ -253,7 +253,3 @@ class NetInformation:
                 if name is not None:
                     names.append(name)
         return list(names)
-
-    # def charts_smith_path(self, length: int):
-    # def charts_impedance_path(self, length: int):
-    # def charts_s_param_path(self, length: int):

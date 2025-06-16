@@ -47,7 +47,7 @@ class PortPad:
     size: Point
     """Size of pad"""
     multi_connected: bool
-    """True if there is more than one trace that exits pad"""
+    """True if more than one trace that exits pad"""
     opt_rating: int
     """How optimal is placement of this port.
     
@@ -231,8 +231,6 @@ class PCBSlice:
                 to_remove.append(zone)
         for zone in to_remove:
             self.board.Remove(zone)
-
-        # self.replace_resistors_and_capacitors()
 
         filler = pcbnew.ZONE_FILLER(self.board)
         filler.Fill(zones)
@@ -878,7 +876,6 @@ class PCBSlice:
             x = pp.position.x
             y = pp.position.y
             orient = pp.port_rotation
-            flip = pp.flipped
             signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
             closest_ang = 0.0
             if len(signal_pads) >= 2:
@@ -964,7 +961,7 @@ class PCBSlice:
                     self.board.Remove(fp)
 
             index_list.append(self.static_sp_index)
-            flip_list.append(flip)
+            flip_list.append(pp.flipped)
             pp.idx = self.static_sp_index
             self.static_sp_index += 1
 
@@ -1186,79 +1183,6 @@ class PCBSlice:
         """Refill existing zones."""
         filler = pcbnew.ZONE_FILLER(self.board)
         filler.Fill(self.board.Zones())
-
-    def edit_diff_via_clearance(self, fill_zone_mode: bool) -> None:
-        """Modify size of clearance for differential vias.
-
-        Changing fill_zone_mode bool value to true decreases size of
-        the via hole to minimum to get 0.05 mm between clearances,
-        then user can use zone filling. Setting this value to false
-        tries to restore the original size of via hole and via diameter -
-        but if it is impossible it makes it a little bit smaller.
-        """
-        via_hole = None
-        via_diameter = None
-        change_zone_prop = False
-
-        # Constants:
-        contour_size = 0.250
-        between_vias_gap = 0.05
-        via_diameter_offset = 0.1
-        contour_diam_offset = 0.08
-
-        self.edit_netclass_clearance(0.001)
-
-        # Look for vias placed very near to each other
-        for track_1 in self.board.GetTracks():
-            if track_1.GetClass() == "PCB_VIA":
-                for track_2 in self.board.GetTracks():
-                    if track_2.GetClass() == "PCB_VIA":
-                        if (
-                            self.euclidean_distance(
-                                track_1.GetPosition(),
-                                pcbnew.ToMM(track_2.GetPosition()),
-                            )
-                            < 1
-                            and self.euclidean_distance(
-                                track_1.GetPosition(),
-                                pcbnew.ToMM(track_2.GetPosition()),
-                            )
-                            != 0
-                        ):
-                            if (
-                                track_1.GetNetname()[:-1] == track_2.GetNetname()[:-1]
-                                and track_1.GetNetname() != "GND"
-                                and track_2.GetNetname() != "GND"
-                            ):
-                                # Changing zone properties flag
-                                change_zone_prop = True
-
-                                # Changing mode of setting up vias
-                                if fill_zone_mode is True:
-                                    self.static_hole = pcbnew.ToMM(track_1.GetDrill())
-                                    self.static_diameter = pcbnew.ToMM(track_1.GetWidth())
-                                    d = self.euclidean_distance(
-                                        track_1.GetPosition(),
-                                        pcbnew.ToMM(track_2.GetPosition()),
-                                    )
-                                    via_hole = d - (2 * contour_size + between_vias_gap)
-                                    via_diameter = via_hole + via_diameter_offset
-                                else:
-                                    via_hole = self.static_hole
-                                    via_diameter = (via_hole + 2 * contour_size) - contour_diam_offset
-
-                                # Edit via properties
-                                track_1.SetDrill(pcbnew.FromMM(float(via_hole)))
-                                track_1.SetWidth(pcbnew.FromMM(float(via_diameter)))
-                                track_2.SetDrill(pcbnew.FromMM(float(via_hole)))
-                                track_2.SetWidth(pcbnew.FromMM(float(via_diameter)))
-                                track_1.SetKeepStartEnd(False)
-                                track_1.SetRemoveUnconnected(False)
-                                track_2.SetKeepStartEnd(False)
-                                track_2.SetRemoveUnconnected(False)
-
-        if change_zone_prop is True:
-            self.change_zone_properties()
 
 
 def netclass_list(path: str) -> None:

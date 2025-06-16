@@ -264,17 +264,7 @@ def main(
             )
             other_nets = {n.GetNetname() for n in trs}
             portpads_other = pcb_slice.get_port_pads(other_pads, included_pads, excluded_pads, other_nets)
-            # Hiding other pads
-            # if settings.is_pad_other():
-            #     pcb_slice.hide_pads(other_pads, candidate_sp_pos_other)
 
-        # Hiding designated pads
-        # if settings.is_pad_designated():
-        #     pcb_slice.hide_pads(pads, candidate_sp_pos1)
-        #     if des_net_2 != []:
-        #         pcb_slice.hide_pads(pads, candidate_sp_pos2)
-
-        if len(trs) > 0:
             sp_index_other, layer_flip_other = pcb_slice.place_simulation_port(portpads_other)
 
         if des_net_2 != []:
@@ -316,7 +306,6 @@ def main(
             port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
 
         pcb_slice.rename_layers()
-        # pcb_slice.edit_diff_via_clearance(True)
         pcb_slice.save_slice(out_path)
 
         # Can't fill zones using the same file without saving it when changed properties of netclasses.
@@ -324,10 +313,6 @@ def main(
         fill_pcb1 = PCBSlice(out_path, nets)
         fill_pcb1.refill_zones()
         fill_pcb1.save_slice(out_path)
-
-        # fill_pcb2 = PCBSlice(out_path, nets)
-        # fill_pcb2.edit_diff_via_clearance(False)
-        # fill_pcb2.save_slice(out_path)
 
         info_port_plcmnt = get_ports_placement_info(sp_index_1, sp_index_2, des_net_2)
         print(f"{nets} | 1. {info_port_plcmnt[0]} | 2. {info_port_plcmnt[1]}")
