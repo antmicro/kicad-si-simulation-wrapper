@@ -13,7 +13,7 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     container:
-      image: kicad/kicad:7.0.11
+      image: kicad/kicad:9.0.2
       options: --user root
     steps:
       - uses: actions/checkout@v4
