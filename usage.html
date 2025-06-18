@@ -1,0 +1,790 @@
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="">
+    
+    
+      
+        <title>Usage - KiCad SI wrapper docs</title>
+      
+    
+    
+      
+        
+        
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+        <link rel="stylesheet" type="text/css" href="_static/sphinx_immaterial_theme.02cb18745d09eea51.min.css?v=ff456132" />
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="KiCad SI wrapper docs" class="md-header__button md-logo" aria-label="KiCad SI wrapper docs" data-md-component="logo">
+      <img src="_static/white.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            KiCad SI wrapper docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Usage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5c-.84 0-1.65.15-2.39.42L12 2M3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29L3.34 7m.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14L3.36 17M20.65 7l-1.77 3.79a7.023 7.023 0 0 0-2.38-4.15l4.15.36m-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29L20.64 17M12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44L12 22Z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31Z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <div class="md-header__button">
+        <a href="si-wrapper.pdf" title="PDF - si-wrapper.pdf">
+          <div class="md-icon">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M64 0C28.7 0 0 28.7 0 64v384c0 35.3 28.7 64 64 64h256c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zm192 0v128h128L256 0zM64 224h24c30.9 0 56 25.1 56 56s-25.1 56-56 56h-8v32c0 8.8-7.2 16-16 16s-16-7.2-16-16V240c0-8.8 7.2-16 16-16zm24 80c13.3 0 24-10.7 24-24s-10.7-24-24-24h-8v48h8zm72-64c0-8.8 7.2-16 16-16h24c26.5 0 48 21.5 48 48v64c0 26.5-21.5 48-48 48h-24c-8.8 0-16-7.2-16-16V240zm32 112h8c8.8 0 16-7.2 16-16v-64c0-8.8-7.2-16-16-16h-8v96zm96-128h48c8.8 0 16 7.2 16 16s-7.2 16-16 16h-32v32h32c8.8 0 16 7.2 16 16s-7.2 16-16 16h-32v48c0 8.8-7.2 16-16 16s-16-7.2-16-16V240c0-8.8 7.2-16 16-16z"/></svg>
+          </div>
+        </a>
+      </div>
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/antmicro/kicad-si-simulation-wrapper" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    antmicro/kicad-si-simulation-wrapper
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="KiCad SI wrapper docs" class="md-nav__button md-logo" aria-label="KiCad SI wrapper docs" data-md-component="logo">
+      <img src="_static/white.svg" alt="logo">
+    </a>
+    KiCad SI wrapper docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/antmicro/kicad-si-simulation-wrapper" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    antmicro/kicad-si-simulation-wrapper
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="introduction.html" class="md-nav__link">
+        <span class="md-ellipsis">Introduction</span>
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        <span class="md-ellipsis">Installation</span>
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="quick-start.html" class="md-nav__link">
+        <span class="md-ellipsis">Quickstart guide</span>
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          <span class="md-ellipsis">Usage</span>
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="#" class="md-nav__link md-nav__link--active">
+        <span class="md-ellipsis">Usage</span>
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#si-wrapper-slice" class="md-nav__link">
+    <span class="md-ellipsis">si-<wbr>wrapper slice</span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#si-wrapper-renumerate" class="md-nav__link">
+    <span class="md-ellipsis">si-<wbr>wrapper renumerate</span>
+  </a>
+  
+    <nav class="md-nav" aria-label="si-wrapper renumerate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#placing-simulation-ports" class="md-nav__link">
+    <span class="md-ellipsis">Placing Simulation Ports</span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requirements-for-simulation-ports-placement" class="md-nav__link">
+    <span class="md-ellipsis">Requirements for Simulation Ports placement</span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#si-wrapper-settings" class="md-nav__link">
+    <span class="md-ellipsis">si-<wbr>wrapper settings</span>
+  </a>
+  
+    <nav class="md-nav" aria-label="si-wrapper settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-configuration-file-description" class="md-nav__link">
+    <span class="md-ellipsis">Single configuration file description</span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#si-wrapper-gerber2png" class="md-nav__link">
+    <span class="md-ellipsis">si-<wbr>wrapper gerber2png</span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset" role="main">
+                  
+
+
+  <a href="https://github.com/antmicro/kicad-si-simulation-wrapper/blob/main/docs/source/usage.md" title="Edit this page" class="md-content__button md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
+  </a>
+
+<h1 id="usage">Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
+<p><strong>Usage</strong>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><code><span class="go">&gt; si-wrapper [OPTIONS] COMMAND [ARGS]...</span>
+</code></pre></div>
+</div>
+<p><strong>Options</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code>: Show this message and exit.</p></li>
+</ul>
+<p><strong>Commands</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">slice</span></code>: Generates simulation cases by creating slices of designated nets</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">renumerate</span></code>: Allows you to remove unused <code class="docutils literal notranslate"><span class="pre">Simulation</span> <span class="pre">Port</span></code> footprints from
+the generated slice and automatically updates the <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code> file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">settings</span></code>: Generates configuration files for the net-slices
+from the source PCB.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gerber2png</span></code>: Generates a bitmap <code class="docutils literal notranslate"><span class="pre">.png</span></code> file of the selected net.</p></li>
+</ul>
+<hr class="docutils" />
+<h2 id="si-wrapper-slice"><code class="docutils literal notranslate"><span class="pre">si-wrapper</span> <span class="pre">slice</span></code><a class="headerlink" href="#si-wrapper-slice" title="Link to this heading">¶</a></h2>
+<p>Generates simulation cases by creating slices of designated nets</p>
+<p><strong>Usage</strong>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><code><span class="go">&gt; si-wrapper slice [OPTIONS]</span>
+</code></pre></div>
+</div>
+<p><strong>Options</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--file</span> <span class="pre">PATH</span></code>: Path to settings file</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-l,</span> <span class="pre">--list</span></code>: List Net classes with corresponding nets</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code>: Increase logs verbosity</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code>: Show this message and exit.</p></li>
+</ul>
+<p><strong>Overview</strong>:</p>
+<p>This script generates simulation cases by creating slices of designated nets
+from the source PCB.
+The script generates a directory called <code class="docutils literal notranslate"><span class="pre">slices</span></code>, with the following structure:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>slices/
+└──<span class="w"> </span>desgnated_net_name/
+<span class="w">  </span>├──<span class="w"> </span>simulation.json
+<span class="w">  </span>├──<span class="w"> </span>designated_net_name.kicad_pcb
+<span class="w">  </span>├──<span class="w"> </span>designated_net_name.kicad_prl
+<span class="w">  </span>└──<span class="w"> </span>designated_net_name.kicad_pro
+</code></pre></div>
+</div>
+<p>To run the script with the slice config, type:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>si-wrapper<span class="w"> </span>slice<span class="w"> </span>-s<span class="w"> </span>path_to/slice_config.json
+</code></pre></div>
+</div>
+<ul>
+<li><p>To run help, type:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>si-wrapper<span class="w"> </span>slice<span class="w"> </span>--help
+</code></pre></div>
+</div>
+</li>
+<li><p>To check nets and class membership, type:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>si-wrapper<span class="w"> </span>slice<span class="w"> </span>-l/--list<span class="w"> </span>
+</code></pre></div>
+</div>
+</li>
+<li><p>To run in debug mode, add:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>--debug
+</code></pre></div>
+</div>
+</li>
+</ul>
+<p><img alt="DDR5_SODIMM_BDQ12" src="_images/sliced_neighbours.png" /></p>
+<p>The resulting PCB slices are stored as a separate KiCad PCB project and
+can be previewed after generation.</p>
+<p>A single PCB slice represents a sub-region of the source PCB that contains a specified,
+impedance-controlled single net or differential pair.
+The size of each slice is determined by the geometrical span of the designated net(s).
+The script contains its own configuration file which allows
+altering the slicing method.
+In particular, the configuration file allows setting:</p>
+<ul class="simple">
+<li><p>size of a margin added to the minimal dimension</p></li>
+<li><p>neighboring nets that should be included in the slice</p></li>
+<li><p>neighboring nets that should be dropped and omitted in the slice</p></li>
+</ul>
+<p>A PCB slice prepared for simulation contains the selected net(s), copper planes,
+vias and neighboring nets (selected in the configuration file).
+Passive elements placed in a series with the selected net (0 Ohm resistors
+and significantly large capacitors) are replaced with shorts.
+Given its validity for our frequencies of interest, this approximation
+enables us to circumvent the current limitations of the OpenEMS simulator.
+Power nets and low speed interfaces are terminated to ground (GND).
+The designated net and neighboring nets are terminated with
+Simulation Ports (SP) which indicate their nominal impedance.</p>
+<hr class="docutils" />
+<h2 id="si-wrapper-renumerate"><code class="docutils literal notranslate"><span class="pre">si-wrapper</span> <span class="pre">renumerate</span></code><a class="headerlink" href="#si-wrapper-renumerate" title="Link to this heading">¶</a></h2>
+<p>Allows you to remove unused <code class="docutils literal notranslate"><span class="pre">Simulation</span> <span class="pre">Port</span></code> footprints from
+the generated slice and automatically updates the <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code> file.</p>
+<p><strong>Usage</strong>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><code><span class="go">&gt; si-wrapper renumerate [OPTIONS]</span>
+</code></pre></div>
+</div>
+<p><strong>Options</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code>: Show this message and exit.</p></li>
+</ul>
+<p><strong>Overview</strong>:</p>
+<p>This script allows users to remove additional Simulation Port footprints
+from the generated slice and automatically updates the <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code> file.
+If the <code class="docutils literal notranslate"><span class="pre">si-wrapper</span> <span class="pre">slice</span></code> script fails to identify the correct number of
+ports - <strong>which for a single net is 2</strong>,
+and <strong>for a differential pair is 4</strong> - it prompts the user to adjust the port placement.
+If too many Simulation Ports were placed on the slice, use the script to
+renumerate them and update the <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code> file.
+Remove redundant ones and fix those with incorrect offset.</p>
+<blockquote>
+<div><p><strong>Warning:</strong> It can only update ports already existing
+on the board - not the ones added manually.</p>
+</div></blockquote>
+<p>To use the script, follow the steps below:</p>
+<ol class="arabic simple">
+<li><p>Remove redundant Simulation Ports from the created slice.
+Correct those placed in the wrong position - see <a class="reference internal" href="#placing-simulation-ports">examples</a>.</p></li>
+<li><p>Use the script inside <code class="docutils literal notranslate"><span class="pre">slices/desgnated_net_name</span></code>.</p></li>
+<li><p>Inspect <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code>. The script automatically updates <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code>,
+but it is highly recommended to check if everything was generated correctly.</p></li>
+</ol>
+<p>To run it, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>si-wrapper<span class="w"> </span>renumerate<span class="w"> </span>
+</code></pre></div>
+</div>
+<h3 id="placing-simulation-ports">Placing Simulation Ports<a class="headerlink" href="#placing-simulation-ports" title="Link to this heading">¶</a></h3>
+<p>Correct:</p>
+<p><img alt="Image 1" src="_images/ok1.png" />
+<img alt="Image 2" src="_images/ok2.png" />
+<img alt="Image 3" src="_images/ok4.png" />
+<img alt="Image 4" src="_images/ok3.png" /></p>
+<p>Acceptable:</p>
+<p><img alt="Image 1" src="_images/acc1.png" />
+<img alt="Image 2" src="_images/acc2.png" /></p>
+<p>Incorrect:</p>
+<p><img alt="Image 1" src="_images/not_ok1.png" />
+<img alt="Image 2" src="_images/not_ok2.png" />
+<img alt="Image 2" src="_images/not_ok3.png" />
+<img alt="Image 2" src="_images/not_ok4.png" />
+<img alt="Image 2" src="_images/not_ok5.png" />
+<img alt="Image 2" src="_images/not_ok6.png" />
+<img alt="Image 2" src="_images/not_ok7.png" /></p>
+<blockquote>
+<div><p><strong>Important:</strong> Remember that the Simulation Port must be placed over the GND layer.
+It also must not touch other nets or planes that are not related.</p>
+</div></blockquote>
+<h3 id="requirements-for-simulation-ports-placement">Requirements for Simulation Ports placement<a class="headerlink" href="#requirements-for-simulation-ports-placement" title="Link to this heading">¶</a></h3>
+<p>Below, you can find a list of rules that define the way of placing Simulation Ports:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Simulation_Port</span></code> is a footprint,</p></li>
+<li><p>The maximum number of Simulation Ports placed
+on a slice prepared for simulation is 8,</p></li>
+<li><p>All Simulation Ports are placed at the beginning and end of the nets,</p></li>
+<li><p>Every single net available on the slice can have more than
+two Simulation Ports, but only one Port’s <code class="docutils literal notranslate"><span class="pre">&quot;excite:&quot;</span></code> value set
+in <code class="docutils literal notranslate"><span class="pre">simulation.json</span></code> can be set as <code class="docutils literal notranslate"><span class="pre">true</span></code>,</p></li>
+<li><p>Simulation Ports spearheads are facing each other on the same net,</p></li>
+<li><p>Simulation Ports are named and numbered from SP1 to SPx,
+where x is a natural number and is equal
+to the number of ports placed on the cutout,</p></li>
+<li><p>Simulation Ports have rotation that is a multiple of 90 degrees,</p></li>
+<li><p>Simulation Ports have to be placed above/under the GND Plane,
+otherwise the simulation will be corrupted,</p></li>
+<li><p>Simulation Port spearheads have to be placed at the beginning of the track.</p></li>
+</ul>
+<hr class="docutils" />
+<h2 id="si-wrapper-settings"><code class="docutils literal notranslate"><span class="pre">si-wrapper</span> <span class="pre">settings</span></code><a class="headerlink" href="#si-wrapper-settings" title="Link to this heading">¶</a></h2>
+<p>Generates configuration files for the net-slices from the source PCB.</p>
+<p><strong>Usage</strong>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><code><span class="go">&gt; si-wrapper settings [OPTIONS]</span>
+</code></pre></div>
+</div>
+<p><strong>Options</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-i,</span> <span class="pre">--input</span> <span class="pre">PATH</span></code>: Initial .json input path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">PATH</span></code>: Net config output path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code>: Show this message and exit.</p></li>
+</ul>
+<p><strong>Overview</strong>:</p>
+<p>Create an <code class="docutils literal notranslate"><span class="pre">init.json</span></code> file:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;netclass&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;all&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;nets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+<p>Define <code class="docutils literal notranslate"><span class="pre">netclass</span></code> or simply type <code class="docutils literal notranslate"><span class="pre">all</span></code> to create a configuration for every net.
+If netclass is left empty, the nets field can be filled with selected nets.</p>
+<p>Define the input <code class="docutils literal notranslate"><span class="pre">-i</span></code> file and output <code class="docutils literal notranslate"><span class="pre">-o</span></code> directory, where
+<a class="reference internal" href="#single-configuration-file-description">configuration files</a>
+are going to be generated.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>si-wrapper<span class="w"> </span>settings<span class="w"> </span>-i<span class="w"> </span>init.json<span class="w"> </span>-o<span class="w"> </span>net_configs/
+</code></pre></div>
+</div>
+<h3 id="single-configuration-file-description">Single configuration file description<a class="headerlink" href="#single-configuration-file-description" title="Link to this heading">¶</a></h3>
+<p>Configuration of each slice can be done by modifying <code class="docutils literal notranslate"><span class="pre">slice_config.json</span></code>,
+as shown below:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;designated_nets&quot;</span><span class="p">:[</span>
+<span class="w">    </span><span class="s2">&quot;net_P&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;net_N&quot;</span><span class="w"> </span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;board_offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;top&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;bottom&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;left&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;right&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;included_pads&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;R1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;R2&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;excluded_pads&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;R3&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;R4&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;hidden_pads&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;designated_net&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;other_nets&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;neighbouring_nets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;in_use&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;common_points&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;netlist&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="s2">&quot;neighbour_net1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;neighbour_net2&quot;</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+<p>Below, you can find description of each field:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">designated_nets</span></code> - list of nets that are designated for simulation.
+For single-ended - add one name of the net, ex: <code class="docutils literal notranslate"><span class="pre">[&quot;/SDA&quot;]</span></code>.
+For a differential pair - add both names, ex: <code class="docutils literal notranslate"><span class="pre">[&quot;CSI_D0_P&quot;,</span> <span class="pre">&quot;CSI_D0_N&quot;]</span></code>.
+When adding a differential pair, first enter the positive net <code class="docutils literal notranslate"><span class="pre">_P</span></code>,
+then the negative <code class="docutils literal notranslate"><span class="pre">_N</span></code>.</p>
+<blockquote>
+<div><p><strong>Note</strong> If any net in the generated slice has Simulation Ports placed in
+unwanted locations, you should perform slicing again with a modified <code class="docutils literal notranslate"><span class="pre">excluded_pads</span></code>
+field. This prevents placing Simulation Ports in unwanted locations on the pads.</p>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">board_offset</span></code> - allows defining the offset from the designated net’s
+maximum and minimum positions. It defines the size of the board after slicing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">included_pads</span></code> - list of components that can contain Simulation Ports on the pads.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">excluded_pads</span></code> - list of components that can’t contain
+Simulation Ports on the pads.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hidden_pads/designated_net</span></code> -  hides pads where Simulation Ports are placed
+on designated nets. Recommended: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hidden_pads/other_nets</span></code> - hides pads where Simulation Ports are placed
+on other nets. Recommended: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbouring_nets/in_use</span></code> - defines if the <code class="docutils literal notranslate"><span class="pre">neighbouring_nets</span></code> feature is in use.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbouring_nets/offset</span></code> - sets the distance in millimeters,
+both vertically and horizontally, for designated nets,
+defining the area where a neighboring track may occur.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbouring_nets/common_points</span></code> - determines the lower limit for the number
+of common points of neighboring tracks with the area defined by<code class="docutils literal notranslate"><span class="pre">neighbouring_nets/offset</span></code>.
+A net whose tracks do not fulfill this requirement is removed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">neighbouring_nets/netlist</span></code> - users can specify the name of the neighbors
+manually and make sure that they are not going to be removed.</p></li>
+</ul>
+<hr class="docutils" />
+<h2 id="si-wrapper-gerber2png"><code class="docutils literal notranslate"><span class="pre">si-wrapper</span> <span class="pre">gerber2png</span></code><a class="headerlink" href="#si-wrapper-gerber2png" title="Link to this heading">¶</a></h2>
+<p>Generates a bitmap <code class="docutils literal notranslate"><span class="pre">.png</span></code> file of the selected net.</p>
+<p><strong>Usage</strong>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><code><span class="go">&gt; si-wrapper gerber2png [OPTIONS]</span>
+</code></pre></div>
+</div>
+<p><strong>Options</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code>: Show this message and exit.</p></li>
+</ul>
+<p><strong>Overview</strong>:</p>
+<p>To create a bitmap <code class="docutils literal notranslate"><span class="pre">.png</span></code> file of the selected net,
+first you have to clean the board manually from additional elements such as
+footprints, vias, planes.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cd</span></code> to directory containing the <code class="docutils literal notranslate"><span class="pre">.kicad_pcb</span></code> file.
+To use the script:</p>
+<ul>
+<li><p>Create slices, for example by following the <a class="reference internal" href="quick-start.html"><span class="std std-doc">Quickstart guide</span></a></p></li>
+<li><p>Create bitmaps by running the following snippet in the repo directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code>kicad-cli<span class="w"> </span>pcb<span class="w"> </span><span class="nb">export</span><span class="w"> </span>gerbers<span class="w"> </span>--no-protel-ext<span class="w"> </span>-o<span class="w"> </span>fab/<span class="w"> </span>*.kicad_pcb
+kicad-cli<span class="w"> </span>pcb<span class="w"> </span><span class="nb">export</span><span class="w"> </span>drill<span class="w"> </span>--format<span class="w"> </span>gerber<span class="w"> </span>--excellon-separate-th<span class="w"> </span>-o<span class="w"> </span>fab/<span class="w"> </span>*.kicad_pcb
+si-wrapper<span class="w"> </span>gerber2png
+</code></pre></div>
+</div>
+</li>
+</ul>
+
+
+  <hr>
+<div class="md-source-file">
+  <small>
+    
+      Last update:
+      2025-06-18
+    
+  </small>
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+        
+        <a href="quick-start.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart guide" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Quickstart guide
+            </div>
+          </div>
+        </a>
+      
+      
+    </nav>
+  
+  
+  
+  <div class="md-footer-meta md-typeset">
+    
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-footer-copyright__highlight">
+        Copyright &#169; Antmicro, 2025.
+        
+    </div>
+  
+      <a href="https://github.com/antmicro/kicad-si-simulation-wrapper/tree/65e25b1b888dc368629d3cbca6750e16fcb3dfd8">65e25b1b</a>
+        @ <a href="https://github.com/antmicro/kicad-si-simulation-wrapper/tree/main">main</a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+      
+      
+    
+    <a href="https://github.com/antmicro" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+    
+    
+      
+      
+    
+    <a href="https://twitter.com/antmicro" target="_blank" rel="noopener" title="twitter.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+    
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": ".", "features": ["toc.integrate"], "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+      
+        <script src="_static/sphinx_immaterial_theme.f9d9eeeb247ace16c.min.js?v=8ec58cb5"></script>
+    
+  </body>
+</html>
