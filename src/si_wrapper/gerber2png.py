@@ -20,7 +20,8 @@ def process_gbrs(img_dir: Optional[Path] = None) -> None:
     Processes copper gerbers into PNG/SVG's using edge_cuts for framing.
     """
     cwd = Path.cwd()
-    img_dir = cwd
+    if img_dir is None:
+        img_dir = Path.cwd()
     fab_dir = cwd / "fab"
 
     img_dir.mkdir(exist_ok=True, parents=True)
@@ -31,11 +32,10 @@ def process_gbrs(img_dir: Optional[Path] = None) -> None:
         sys.exit(1)
 
     layers = {
-        "F_Cu": list(fab_dir.glob("*F_Cu.gbr"))[0:0],
-        "B_Cu": list(fab_dir.glob("*B_Cu.gbr"))[0:0],
+        "F_Cu": list(fab_dir.glob("*F_Cu.gbr"))[0:1],
+        "B_Cu": list(fab_dir.glob("*B_Cu.gbr"))[0:1],
         "In_Cu": list(fab_dir.glob("*-In*")),
     }
-
     # Split top and bootom into two images
     # Reduce inner layers to one image
     for name, in_file in layers.items():
@@ -49,22 +49,21 @@ def gerbv_call(gerber_filenames: List[Path], edge_filename: Path, output_filenam
     Edge cuts gerber is used to crop the image correctly.
     """
     color_array = ["--background=#FFFFFF"]
-    color_array.append(" --foreground=#000000FF" * len(gerber_filenames))
-    color_array.append(" --foreground=#FFFFFF")
-    cmd = ["gerbv"] + gerber_filenames + [edge_filename, "-a", "-o"] + color_array
+    color_array.extend("--foreground=#000000FF" for _ in gerber_filenames)
+    color_array.append("--foreground=#FFFFFF")
+    dpi = 2000
+    cmd = ["gerbv"] + gerber_filenames + [edge_filename, "-a", f"--dpi={dpi}"] + color_array
 
-    dpi = 1000
-    cmd_png = cmd + [output_filename.with_suffix(".png"), f"--dpi={dpi}", "--export=png", "--border=0"]
+    cmd_png = cmd + ["-o", output_filename.with_suffix(".png"), "--export=png", "--border=0"]
     logger.debug(f"Generating PNG, CMD: {cmd_png}")
     subprocess.call(cmd_png, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    cmd_svg = cmd + [output_filename.with_suffix(".svg"), "--export=svg", "--border=4"]
+    cmd_svg = cmd + ["-o", output_filename.with_suffix(".svg"), "--export=svg", "--border=5"]
     logger.debug(f"Generating SVG, CMD: {cmd_svg}")
     subprocess.call(cmd_svg, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 @app.command("gerber2png")
-
 def main(debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False) -> None:
     """Process gerbers to png/svg."""
     setup_logging(debug)
