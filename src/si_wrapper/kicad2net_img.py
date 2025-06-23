@@ -21,6 +21,7 @@ def main(
     config_file: Annotated[Path, typer.Option("--file", "-f", help="Path to settings file")] = Path("si-wrapper-cfg"),
     debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False,
     no_strip: Annotated[bool, typer.Option("--no-strip", help="Do not modify pcb prior to image export")] = False,
+    no_png: Annotated[bool, typer.Option("--no-png", help="Skip export to png")] = False,
 ) -> None:
     """Process gerbers/kicad_pcb to png/svg, optionally striping all but designated net."""
     setup_logging(debug)
@@ -59,7 +60,7 @@ def main(
                 "--no-protel-ext",
             ]
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            process_gbrs(Path(cwd) / "assets" / "nets" / net_name)
+            process_gbrs(Path(cwd) / "assets" / "nets" / net_name, no_png)
             os.chdir(cwd)
 
 

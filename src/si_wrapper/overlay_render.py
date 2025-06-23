@@ -161,11 +161,11 @@ def main(
 ) -> None:
     setup_logging(debug)
 
+    # Create SVG images each with single net
+    kicad2net(config_file, debug, no_png=True)
+
     # Prepare base render
     prepare_render(next((Path.cwd() / "release" / "3d-model").glob("*.blend")))
-
-    # Create SVG images each with single net
-    kicad2net(config_file, debug)
 
     cfg_files = [config_file] if config_file.suffix == ".json" else list(config_file.glob("**/*.json"))
     with Pool() as p:
