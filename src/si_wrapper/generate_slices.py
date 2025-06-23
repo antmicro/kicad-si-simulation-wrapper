@@ -328,7 +328,7 @@ def main(
                         [track]
                     )
                     break
-            port_cfg.add_differential_pair(check_diffs([p.idx -1  for p in ppg]), nn, diff_impedance)
+            port_cfg.add_differential_pair(check_diffs([p.idx - 1 for p in ppg]), nn, diff_impedance)
 
         pcb_slice.save_slice(out_path)
 

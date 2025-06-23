@@ -91,8 +91,8 @@ def main(
         "./si-wrapper-cfg"
     ),
     exp_neighbors: Annotated[
-        Path, typer.Option("--exp_neighbors", "-n", help="Use extended neighborhood definitions")
-    ] = Path("./si-wrapper-cfg"),
+        bool, typer.Option("--exp_neighbors", "-n", help="Use extended neighborhood definitions")
+    ] = False,
 ) -> None:
     """Generate settings for netslices."""
     settings = SettingCreator(input_file, output_file)

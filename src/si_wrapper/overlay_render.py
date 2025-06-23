@@ -4,6 +4,8 @@ from typing import Dict, Annotated
 import tempfile
 import logging
 from argparse import Namespace
+from multiprocessing import Pool
+from functools import partial
 
 from wand.image import Image, Color
 import typer
@@ -83,16 +85,18 @@ def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_d
 
 
 def prepare_render(blend_path: Path) -> None:
-    import pcbooth
-    import pcbooth.modules.config as pcbt_config
-    from pcbooth.modules.studio import Studio
-    import pcbooth.modules.job_utilities as ju
-    import pcbooth.modules.custom_utilities as cu
-    from pcbooth.jobs.static import Static
-    from pcbooth.jobs.stackup import solder_switch_override
-    import pcbooth.core.blendcfg as pcbt_blendcfg
-    import yaml
-    import bpy
+    try:
+        import pcbooth
+        import pcbooth.modules.config as pcbt_config
+        from pcbooth.modules.studio import Studio
+        import pcbooth.modules.custom_utilities as cu
+        from pcbooth.jobs.static import Static
+        from pcbooth.jobs.stackup import solder_switch_override
+        import pcbooth.core.blendcfg as pcbt_blendcfg
+        import yaml
+        import bpy
+    except ModuleNotFoundError:
+        return
 
     pcb_ortho_cfg = {
         "CAMERAS": {"TOP": True},
@@ -100,7 +104,7 @@ def prepare_render(blend_path: Path) -> None:
         "BACKGROUNDS": {"LIST": ["transparent"]},
         "OUTPUTS": [{"STATIC": {}}],
         "SETTINGS": {"RENDER_DIR": "renders", "IMAGE_FORMAT": ["WEBP"]},
-        "RENDERER": {"SAMPLES": 32, "IMAGE_WIDTH": 4096, "IMAGE_HEIGHT": 4096},
+        "RENDERER": {"SAMPLES": 32, "IMAGE_WIDTH": 1920, "IMAGE_HEIGHT": 1920},
         "SCENE": {"DEPTH_OF_FIELD": False, "ZOOM_OUT": 1.05, "ADJUST_POS": True, "ORTHO_CAM": True},
     }
     pcbt_dir = Path(pcbooth.__file__).parent
@@ -115,18 +119,39 @@ def prepare_render(blend_path: Path) -> None:
 
     cu.open_blendfile(pcbt_config.pcb_blend_path)
 
+    # Remove components and solder
     components = []
     if c := bpy.data.collections.get("Components"):
-        components=list(c.objects)
+        components = list(c.objects)
     if solder := bpy.data.objects.get("Solder", None):  # hide PCB model solder object if present
         components.append(solder)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in components:
         obj.select_set(True)
     bpy.ops.object.delete()
+
     studio = Studio()
     with solder_switch_override():
         Static({"FRAMES": []}).execute(studio)
+
+
+def process_net(cfile: Path, debug: bool) -> None:
+
+    # Plot net highlight overlay over render
+    settings_path = str(cfile)
+    settings = Settings(settings_path)
+
+    nets = settings.get_nets()
+    net_name = Settings.get_filesystem_name(nets)
+
+    object_namelist = {"B_Cu": "#00AAAA", "In_Cu": "#00CCCC", "F_Cu": "#00EEEE"}
+    net_dir = Path.cwd() / "assets" / "nets" / net_name
+    overlay_render(
+        render_path=Path.cwd() / "renders" / "topT_transparent.webp",
+        svg_base_path=net_dir,
+        out_path=net_dir / "top_view.webp",
+        svg_dict=object_namelist,
+    )
 
 
 @app.command("overlay_render")
@@ -142,23 +167,9 @@ def main(
     # Create SVG images each with single net
     kicad2net(config_file, debug)
 
-    # Plot net highlight overlay over render
     cfg_files = [config_file] if config_file.suffix == ".json" else list(config_file.glob("**/*.json"))
-    for cfile in cfg_files:
-        settings_path = str(cfile)
-        settings = Settings(settings_path)
-
-        nets = settings.get_nets()
-        net_name = Settings.get_filesystem_name(nets)
-
-        object_namelist = {"B_Cu": "#00AAAA", "In_Cu": "#00CCCC", "F_Cu": "#00EEEE"}
-        net_dir = Path.cwd() / "assets" / "nets" / net_name
-        overlay_render(
-            render_path=Path.cwd() / "renders" / "topT_transparent.webp",
-            svg_base_path=net_dir,
-            out_path=net_dir / "top_view.webp",
-            svg_dict=object_namelist,
-        )
+    with Pool() as p:
+        p.map(partial(process_net, debug=debug), cfg_files)
 
 
 if __name__ == "__main__":
