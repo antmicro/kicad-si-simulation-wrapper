@@ -1,7 +1,7 @@
 (footprint "Simulation_Port" (version 20221018) (generator pcbnew)
   (layer "F.Cu")
   (descr "Place where port in the simulation should be located. Set it's reference to SPx, where x is port number")
-  (attr board_only exclude_from_pos_files exclude_from_bom)
+  (attr board_only)
   (fp_text reference "REF**" (at 0 1 unlocked) (layer "F.Fab")
       (effects (font (size 1 1) (thickness 0.15)))
     (tstamp 58e83f31-c518-4277-a1e0-b14454fa521c)
