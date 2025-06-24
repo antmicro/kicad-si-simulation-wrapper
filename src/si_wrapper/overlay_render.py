@@ -3,12 +3,14 @@ import re
 from typing import Dict, Annotated
 import tempfile
 import logging
-from argparse import Namespace
 from multiprocessing import Pool
 from functools import partial
+import subprocess
+import shutil
 
 from wand.image import Image, Color
 import typer
+import yaml
 
 from si_wrapper.create_settings import Settings
 from si_wrapper.kicad2net_img import main as kicad2net
@@ -84,55 +86,58 @@ def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_d
         render.save(filename=out_path)
 
 
-def prepare_render(blend_path: Path) -> None:
-    try:
-        import pcbooth
-        import pcbooth.modules.config as pcbt_config
-        from pcbooth.modules.studio import Studio
-        import pcbooth.modules.custom_utilities as cu
-        from pcbooth.jobs.static import Static
-        from pcbooth.jobs.stackup import solder_switch_override
-        import pcbooth.core.blendcfg as pcbt_blendcfg
-        import yaml
-        import bpy
-    except ModuleNotFoundError:
-        return
+def prepare_render() -> None:
 
     pcb_ortho_cfg = {
-        "CAMERAS": {"TOP": True},
-        "POSITIONS": {"TOP": True},
-        "BACKGROUNDS": {"LIST": ["transparent"]},
-        "OUTPUTS": [{"STATIC": {}}],
-        "SETTINGS": {"RENDER_DIR": "renders", "IMAGE_FORMAT": ["WEBP"]},
-        "RENDERER": {"SAMPLES": 32, "IMAGE_WIDTH": 1920, "IMAGE_HEIGHT": 1920},
-        "SCENE": {"DEPTH_OF_FIELD": False, "ZOOM_OUT": 1.05, "ADJUST_POS": True, "ORTHO_CAM": True},
+        "default": {
+            "CAMERAS": {"TOP": True},
+            "POSITIONS": {"TOP": True},
+            "BACKGROUNDS": {"LIST": ["transparent"]},
+            "OUTPUTS": [{"STATIC": {}}],
+            "SETTINGS": {"RENDER_DIR": "renders", "IMAGE_FORMAT": ["WEBP"]},
+            "RENDERER": {"SAMPLES": 32, "IMAGE_WIDTH": 1920, "IMAGE_HEIGHT": 1920},
+            "SCENE": {"DEPTH_OF_FIELD": False, "ZOOM_OUT": 1.05, "ADJUST_POS": True, "ORTHO_CAM": True},
+        }
     }
-    pcbt_dir = Path(pcbooth.__file__).parent
-    template = yaml.load((pcbt_dir / "templates" / "blendcfg.yaml").open(), yaml.Loader)
-    cfg = pcbt_blendcfg.update_yamls(template["default"], pcb_ortho_cfg)
-    pcbt_config.prj_path = str(Path.cwd()) + "/"
-    pcbt_config.pcbt_dir_path = str(pcbt_dir) + "/"
-    schema = pcbooth.core.schema.ConfigurationSchema()
-    pcbt_config.blendcfg = pcbt_blendcfg.validate_blendcfg(cfg, schema)
-    pcbt_config.configure_paths(Namespace(blend_path=str(blend_path)))
-    pcbt_config.args = Namespace(force_gpu=False)
-
-    cu.open_blendfile(pcbt_config.pcb_blend_path)
-
-    # Remove components and solder
-    components = []
-    if c := bpy.data.collections.get("Components"):
-        components = list(c.objects)
-    if solder := bpy.data.objects.get("Solder", None):  # hide PCB model solder object if present
-        components.append(solder)
-    bpy.ops.object.select_all(action="DESELECT")
-    for obj in components:
-        obj.select_set(True)
-    bpy.ops.object.delete()
-
-    studio = Studio()
-    with solder_switch_override():
-        Static({"FRAMES": []}).execute(studio)
+    subprocess.run(
+        [
+            "kicad-cli",
+            "pcb",
+            "export",
+            "gerbers",
+            "*.kicad_pcb",
+            "-o",
+            "fab/",
+            "--layers",
+            "--precision",
+            "6",
+            "--subtract-soldermask",
+            "--no-protel-ext",
+        ]
+    )
+    subprocess.run(
+        [
+            "kicad-cli",
+            "pcb",
+            "export",
+            "drill",
+            "--drill-origin",
+            "absolute",
+            "*.kicad_pcb",
+            "-o",
+            "fab/",
+            "--format",
+            "gerber",
+        ]
+    )
+    try:
+        shutil.move("blendcfg.yaml", "blendcfg.yaml.bak")
+        with open("blendcfg.yaml", mode="a") as f:
+            f.write(yaml.dump(pcb_ortho_cfg))
+        subprocess.run(["gerber2blend"])
+        subprocess.run(["pcbooth"])
+    finally:
+        shutil.move("blendcfg.yaml.bak", "blendcfg.yaml")
 
 
 def process_net(cfile: Path, debug: bool) -> None:
@@ -165,7 +170,7 @@ def main(
     kicad2net(config_file, debug, no_png=True)
 
     # Prepare base render
-    prepare_render(next((Path.cwd() / "release" / "3d-model").glob("*.blend")))
+    prepare_render()
 
     cfg_files = [config_file] if config_file.suffix == ".json" else list(config_file.glob("**/*.json"))
     with Pool() as p:

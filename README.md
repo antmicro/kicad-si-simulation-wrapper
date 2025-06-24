@@ -26,7 +26,7 @@ for more information about using `si-wrapper`.
 
 ### Requirements
 
-`si-wrapper` requires `KiCad 9.0.x`, `python >= 3.10`, `pip` and `gerbv`.
+`si-wrapper` requires `KiCad 9.0.x`, `python >= 3.10`, `pip` and `gerbv`. `overlay_render` requires also `gerber2blend`, `pcbooth` & `wand` (with ability to process SVG images)
 
 > Note: The provided scripts were tested with KiCad 9.0.2 and Debian 12.
 
@@ -44,8 +44,11 @@ for more information about using `si-wrapper`.
     ```bash
     echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
     apt update
-    apt install python3 python3-pip gerbv
+    apt install python3 python3-pip gerbv pipx
     apt install -t bookworm-backports kicad
+    # for `overlay_render` subcmd also:
+    apt install python3-wand libmagickcore-6.q16-6-extra inkscape
+    pipx install 'git+https://github.com/antmicro/gerber2blend.git' 'git+https://github.com/antmicro/pcbooth.git'
     ```
 
 

@@ -60,7 +60,7 @@ def main(
                 "--no-protel-ext",
             ]
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            process_gbrs(Path(cwd) / "assets" / "nets" / net_name, no_png)
+            process_gbrs(Path(cwd) / "release" / "si-assets" / net_name, no_png)
             os.chdir(cwd)
 
 

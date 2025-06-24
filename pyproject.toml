@@ -18,7 +18,6 @@ si-wrapper= "si_wrapper.main:app"
 
 [project.optional-dependencies]
 dev = ["mypy", "ruff", "black"]
-render = ["pcbooth @ git+https://github.com/antmicro/pcbooth.git@2dcbd1211d3b3dc3bc73388b4df8383889428ce5", "gerber2blend @ git+https://github.com/antmicro/gerber2blend.git@0f032003a159d4abb9bcc95197cd7139eacadffd]
 
 [tool.setuptools]
 package-dir = { "si_wrapper" = "src/si_wrapper" }
