@@ -131,13 +131,15 @@ def prepare_render() -> None:
         ]
     )
     try:
-        shutil.move("blendcfg.yaml", "blendcfg.yaml.bak")
+        if Path("blendcfg.yaml").exists():
+            shutil.move("blendcfg.yaml", "blendcfg.yaml.bak")
         with open("blendcfg.yaml", mode="a") as f:
             f.write(yaml.dump(pcb_ortho_cfg))
         subprocess.run(["gerber2blend"])
         subprocess.run(["pcbooth"])
     finally:
-        shutil.move("blendcfg.yaml.bak", "blendcfg.yaml")
+        if Path("blendcfg.yaml.bak").exists():
+            shutil.move("blendcfg.yaml.bak", "blendcfg.yaml")
 
 
 def process_net(cfile: Path, debug: bool) -> None:
