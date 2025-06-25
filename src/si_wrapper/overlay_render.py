@@ -99,13 +99,14 @@ def prepare_render() -> None:
             "SCENE": {"DEPTH_OF_FIELD": False, "ZOOM_OUT": 1.05, "ADJUST_POS": True, "ORTHO_CAM": True},
         }
     }
+    pcb = next(Path.cwd().glob("*.kicad_pcb"))
     subprocess.run(
         [
             "kicad-cli",
             "pcb",
             "export",
             "gerbers",
-            "*.kicad_pcb",
+            pcb,
             "-o",
             "fab/",
             "--layers",
@@ -116,19 +117,7 @@ def prepare_render() -> None:
         ]
     )
     subprocess.run(
-        [
-            "kicad-cli",
-            "pcb",
-            "export",
-            "drill",
-            "--drill-origin",
-            "absolute",
-            "*.kicad_pcb",
-            "-o",
-            "fab/",
-            "--format",
-            "gerber",
-        ]
+        ["kicad-cli", "pcb", "export", "drill", "--drill-origin", "absolute", pcb, "-o", "fab/", "--format", "gerber"]
     )
     try:
         if Path("blendcfg.yaml").exists():
