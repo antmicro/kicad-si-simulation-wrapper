@@ -80,7 +80,8 @@ def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_d
                 temp.write(ofile)
                 temp.flush()
                 with Image(filename=temp.name, background=Color("transparent")) as svg_overlay:
-                    svg_overlay.resize(render.width, render.height)
+                    scale = min(render.width / svg_overlay.width, render.height / svg_overlay.height)
+                    svg_overlay.resize(int(svg_overlay.width * scale), int(svg_overlay.height * scale))
                     render.composite(svg_overlay, gravity="center")
         logger.info(f"Save overlay render: {out_path}")
         render.save(filename=out_path)
