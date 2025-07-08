@@ -6,8 +6,7 @@ include:
 stages:
   - code-checks
   - test
-  - build
-  - deploy
+  - docs
 
 test:
   stage: test
@@ -48,3 +47,6 @@ simulate_examples:
 tuttest:
   when: never
   stage: test
+  
+build-docs:
+  stage: docs
