@@ -8,7 +8,6 @@ from functools import partial
 import subprocess
 import shutil
 
-from wand.image import Image, Color
 import typer
 import yaml
 
@@ -21,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 SVG_GLOW_FILTER = """<defs>
-    <!-- a transparent glow that takes on the colour of the object it's applied to -->
     <!-- a transparent glow that takes on the colour of the object it's applied to -->
     <filter
        id="glow">
@@ -56,6 +54,8 @@ SVG_GLOW_FILTER = """<defs>
 
 
 def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_dict: Dict[str, str]) -> None:
+    from wand.image import Image, Color
+
     with Image(filename=render_path) as render:
         for svg_name, color in svg_dict.items():
             ifile_path = svg_base_path / (svg_name + ".svg")
@@ -156,6 +156,7 @@ def main(
     config_file: Annotated[Path, typer.Option("--file", "-f", help="Path to settings file")] = Path("si-wrapper-cfg"),
     debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False,
 ) -> None:
+    """ Prepare pcb renders each with one of the to-be-simulated traces highlighted."""
     setup_logging(debug)
 
     # Create SVG images each with single net

@@ -26,7 +26,9 @@ for more information about using `si-wrapper`.
 
 ### Requirements
 
-`si-wrapper` requires `KiCad 9.0.x`, `python >= 3.10`, `pip` and `gerbv`. `overlay_render` requires also `gerber2blend`, `pcbooth` & `wand` (with ability to process SVG images)
+`si-wrapper` requires `KiCad 9.0.x`, `python >= 3.10`, `pip` and `gerbv`.
+
+`overlay_render` requires also `gerber2blend`, `pcbooth` & `wand` in order to process SVG images
 
 > Note: The provided scripts were tested with KiCad 9.0.2 and Debian 12.
 
