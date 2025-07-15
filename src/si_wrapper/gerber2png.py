@@ -45,7 +45,7 @@ def process_gbrs(img_dir: Optional[Path] = None, no_png: bool = False) -> None:
 def gerbv_call(gerber_filenames: List[Path], edge_filename: Path, output_filename: Path, no_png: bool) -> None:
     """Generate PNG/SVG from gerber file.
 
-    Generates PNG/SVG of a gerber(s) using gerbv.
+    Generates PNG/SVG of a gerber using gerbv.
     Edge cuts gerber is used to crop the image correctly.
     """
     color_array = ["--background=#FFFFFF"]

@@ -156,7 +156,7 @@ def main(
     config_file: Annotated[Path, typer.Option("--file", "-f", help="Path to settings file")] = Path("si-wrapper-cfg"),
     debug: Annotated[bool, typer.Option("--debug", help="Increase logs verbosity")] = False,
 ) -> None:
-    """ Prepare pcb renders each with one of the to-be-simulated traces highlighted."""
+    """Prepare PCB renders for each of the highlighted traces to be simulated."""
     setup_logging(debug)
 
     # Create SVG images each with single net
