@@ -1152,6 +1152,9 @@ class PCBSlice:
                 fp.Reference().SetVisible(True)
             else:
                 to_remove.append(fp)
+                for g in fp.GraphicalItems():
+                    if g.GetLayer() == pcbnew.Edge_Cuts:
+                        self.board.Add(g.Duplicate())
 
         # Append zones to remove
         for zone in self.board.Zones():
