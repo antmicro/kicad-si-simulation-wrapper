@@ -142,7 +142,7 @@ def process_net(cfile: Path, debug: bool) -> None:
     net_name = Settings.get_filesystem_name(nets)
 
     object_namelist = {"B_Cu": "#00AAAA", "In_Cu": "#00CCCC", "F_Cu": "#00EEEE"}
-    net_dir = Path.cwd() / "release" / "si-assets" / net_name
+    net_dir = Path.cwd() / "release" / "assets" / "si" / net_name
     overlay_render(
         render_path=Path.cwd() / "renders" / "topT_transparent.webp",
         svg_base_path=net_dir,
