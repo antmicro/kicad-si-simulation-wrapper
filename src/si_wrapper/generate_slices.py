@@ -217,7 +217,8 @@ def main(
             )
 
         logger.info("Terminating Tracks...")
-        terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos], offset)
+        pad_pos = pcb_slice.get_des_pads_points()
+        terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos, pad_pos], offset)
 
         if neighbour_inuse:
             pcb_slice.remove_pads(nearest_net_names)

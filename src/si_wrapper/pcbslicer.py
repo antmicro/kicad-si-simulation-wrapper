@@ -131,6 +131,22 @@ class PCBSlice:
 
         return des_track
 
+    def get_des_pads_points(self) -> list:
+        """Return designated track pads."""
+        pad_points = []
+        for net_n in self.netname:
+            for pad in self.board.GetPads():
+                if pad.GetNetname() == net_n:
+                    bbox = pad.GetBoundingBox()
+                    start_x = pcbnew.ToMM(bbox.GetLeft())
+                    start_y = pcbnew.ToMM(bbox.GetTop())
+                    end_x = pcbnew.ToMM(bbox.GetRight())
+                    end_y = pcbnew.ToMM(bbox.GetBottom())
+                    pad_points.append((start_x, start_y))
+                    pad_points.append((end_x, end_y))
+
+        return pad_points
+
     def get_whole_track(self, track_in: Any) -> tuple[list[Any], int, int]:
         """Return information about chosen track."""
         tracks_out = []
@@ -247,25 +263,34 @@ class PCBSlice:
         orient = 0
         sp_tracks = []
 
-        [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = edges
-
-        # Define courners #
-        top_left_edge = [edges[1], edges[3]]
-        top_right_edge = [edges[0], edges[3]]
-        bottom_left_edge = [edges[1], edges[2]]
-        bottom_right_edge = [edges[0], edges[2]]
-
         for track in self.board.GetTracks():
             self.to_gnd(track)
 
             [start_x, start_y] = pcbnew.ToMM(track.GetStart())
             [end_x, end_y] = pcbnew.ToMM(track.GetEnd())
 
+            width = track.GetFrontWidth() if isinstance(track, pcbnew.PCB_VIA) else track.GetWidth()
+            track_radius = pcbnew.ToMM(width) / 2
+            [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = edges
+
+            max_edge_x -= track_radius
+            max_edge_y -= track_radius
+            min_edge_x += track_radius
+            min_edge_y += track_radius
+
+            # Define corners #
+            top_left_corner = [min_edge_x, min_edge_y]
+            top_right_corner = [max_edge_x, min_edge_y]
+            bottom_left_corner = [min_edge_x, max_edge_y]
+            bottom_right_corner = [max_edge_x, max_edge_y]
+
             if (
                 (start_x < min_edge_x and end_x < min_edge_x)
                 or (start_x > max_edge_x and end_x > max_edge_x)
                 or (start_y < min_edge_y and end_y < min_edge_y)
                 or (start_y > max_edge_y and end_y > max_edge_y)
+                or max_edge_x < min_edge_x
+                or max_edge_y < min_edge_y
             ):
                 self.board.Delete(track)
                 continue
@@ -273,8 +298,8 @@ class PCBSlice:
             if start_x < min_edge_x and end_x > min_edge_x:
                 # [StartCheck, SEdge, EEdge] = [True, top_left_edge, bottom_left_edge]
                 start_x, start_y = self.calculate_intersection(
-                    top_left_edge,
-                    bottom_left_edge,
+                    top_left_corner,
+                    bottom_left_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="start",
@@ -297,8 +322,8 @@ class PCBSlice:
             if start_x > min_edge_x and end_x < min_edge_x:
                 # [EndCheck, SEdge, EEdge] = [True, top_left_edge, bottom_left_edge]
                 end_x, end_y = self.calculate_intersection(
-                    top_left_edge,
-                    bottom_left_edge,
+                    top_left_corner,
+                    bottom_left_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="end",
@@ -311,8 +336,8 @@ class PCBSlice:
             if start_x < max_edge_x and end_x > max_edge_x:
                 # [EndCheck, SEdge, EEdge] = [True, top_right_edge, bottom_right_edge]
                 end_x, end_y = self.calculate_intersection(
-                    top_right_edge,
-                    bottom_right_edge,
+                    top_right_corner,
+                    bottom_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="end",
@@ -325,8 +350,8 @@ class PCBSlice:
             if start_x > max_edge_x and end_x < max_edge_x:
                 # [StartCheck, SEdge, EEdge] = [True, top_right_edge, bottom_right_edge]
                 [start_x, start_y] = self.calculate_intersection(
-                    top_right_edge,
-                    bottom_right_edge,
+                    top_right_corner,
+                    bottom_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="start",
@@ -349,8 +374,8 @@ class PCBSlice:
             if start_y < min_edge_y and end_y > min_edge_y:
                 # [StartCheck, SEdge, EEdge] = [True, top_left_edge, top_right_edge]
                 [start_x, start_y] = self.calculate_intersection(
-                    top_left_edge,
-                    top_right_edge,
+                    top_left_corner,
+                    top_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="start",
@@ -373,8 +398,8 @@ class PCBSlice:
             if start_y > min_edge_y and end_y < min_edge_y:
                 # [EndCheck, SEdge, EEdge] = [True, top_left_edge, top_right_edge]
                 end_x, end_y = self.calculate_intersection(
-                    top_left_edge,
-                    top_right_edge,
+                    top_left_corner,
+                    top_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="end",
@@ -387,8 +412,8 @@ class PCBSlice:
             if start_y < max_edge_y and end_y > max_edge_y:
                 # [EndCheck, SEdge, EEdge] = [True, bottom_left_edge, bottom_right_edge]
                 [end_x, end_y] = self.calculate_intersection(
-                    bottom_left_edge,
-                    bottom_right_edge,
+                    bottom_left_corner,
+                    bottom_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="end",
@@ -401,8 +426,8 @@ class PCBSlice:
             if start_y > max_edge_y and end_y < max_edge_y:
                 # [StartCheck, SEdge, EEdge] = [True, bottom_left_edge, bottom_right_edge]
                 [start_x, start_y] = self.calculate_intersection(
-                    bottom_left_edge,
-                    bottom_right_edge,
+                    bottom_left_corner,
+                    bottom_right_corner,
                     track_start=[start_x, start_y],
                     track_end=[end_x, end_y],
                     track_beg="start",
@@ -499,7 +524,7 @@ class PCBSlice:
 
     def create_edge_cuts(self, track_pos: list, offset: list[float]) -> list:
         """Create shape for Sliced PCB."""
-        points = np.vstack([track_pos[0], track_pos[1]])
+        points = np.vstack([track_pos[0], track_pos[1], track_pos[2]])
 
         max_track_x: Any = None
         min_track_x: Any = None
@@ -521,8 +546,17 @@ class PCBSlice:
         min_track_x = min_track_x - offset[1]
         max_track_y = max_track_y + offset[2]
         min_track_y = min_track_y - offset[3]
+        edge_bbox = self.board.GetBoardEdgesBoundingBox()
+        edges_org = [
+            pcbnew.ToMM(edge_bbox.GetRight()),
+            pcbnew.ToMM(edge_bbox.GetLeft()),
+            pcbnew.ToMM(edge_bbox.GetBottom()),
+            pcbnew.ToMM(edge_bbox.GetTop()),
+        ]
 
         edges = [max_track_x, min_track_x, max_track_y, min_track_y]
+        func = [min, max, min, max]
+        edges = [f(a, b) for f, a, b in zip(func, edges_org, edges, strict=True)]
 
         self.footprint_to_pad()
         new_edges = self.remove_footprints(edges)
@@ -548,10 +582,14 @@ class PCBSlice:
 
         # Create offset for edge cuts
         edge_offset = 1.0
-        edge_corners = [
-            [float(new_edges[1] - edge_offset), float(new_edges[3] - edge_offset)],
-            [float(new_edges[0] + edge_offset), float(new_edges[2] + edge_offset)],
+        ec = [
+            new_edges[0] + edge_offset,
+            new_edges[1] - edge_offset,
+            new_edges[2] + edge_offset,
+            new_edges[3] - edge_offset,
         ]
+        ec = [float(f(a, b)) for f, a, b in zip(func, edges_org, new_edges, strict=True)]
+        edge_corners = [[ec[1], ec[3]], [ec[0], ec[2]]]
 
         segment = pcbnew.PCB_SHAPE(self.board)
         self.board.Add(segment)
