@@ -108,7 +108,7 @@ def main(
     if len(nets) == 0:
         nets = []
         for _, netinfo in board.GetNetsByNetcode().items():
-            if netinfo.GetNetClassName() == netclass or (
+            if netclass in netinfo.GetNetClassName().split(",") or (
                 netclass == "all" and re.search(REGEX_IMPEDANCE_PATT, netinfo.GetNetClassName())
             ):
                 if "diff" not in netinfo.GetNetClassName().lower():
