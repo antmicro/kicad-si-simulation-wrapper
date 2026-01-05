@@ -38,15 +38,15 @@ class SettingCreator:
 
     def get_board(self) -> list[str]:
         """Get name of the board."""
-        return self.json_file["board"]
+        return self.json_file.get("board", ".")
 
     def get_nets(self) -> list[str]:
         """Get nets field from file."""
-        return [i for i in self.json_file["nets"]]
+        return [i for i in self.json_file.get("nets", [])]
 
     def get_netclass(self) -> list[str]:
         """Get netclass filed from file."""
-        return self.json_file["netclass"]
+        return self.json_file.get("netclass", "all")
 
     def new_config(self, nets: list, expn: bool) -> None:
         """Create new configuration file for single net."""
