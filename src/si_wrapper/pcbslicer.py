@@ -524,7 +524,7 @@ class PCBSlice:
 
     def create_edge_cuts(self, track_pos: list, offset: list[float]) -> list:
         """Create shape for Sliced PCB."""
-        points = np.vstack([track_pos[0], track_pos[1], track_pos[2]])
+        points = np.vstack([track_pos[0], track_pos[1], np.array(track_pos[2], dtype=float).reshape(-1, 2)])
 
         max_track_x: Any = None
         min_track_x: Any = None
