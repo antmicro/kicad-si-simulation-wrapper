@@ -333,12 +333,6 @@ def main(
 
         pcb_slice.save_slice(out_path)
 
-        # Can't fill zones using the same file without saving it when changed properties of netclasses.
-        # Have to save it, reopen and refill, then again save - some PCBnew bug.
-        fill_pcb1 = PCBSlice(out_path, nets)
-        fill_pcb1.refill_zones()
-        fill_pcb1.save_slice(out_path)
-
         info_port_plcmnt = get_ports_placement_info(sp_index_1, sp_index_2, des_net_2)
         print(f"{nets} | 1. {info_port_plcmnt[0]} | 2. {info_port_plcmnt[1]}")
 

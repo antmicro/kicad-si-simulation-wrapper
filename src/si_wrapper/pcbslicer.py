@@ -222,36 +222,50 @@ class PCBSlice:
 
     def resize_zones(self, edges: list) -> None:
         """Fit sizes of the zones to size of new PCB."""
-        [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = edges
+        [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = [pcbnew.FromMM(float(e)) for e in edges]
 
         zones = self.board.Zones()
         to_remove = []
+
+        def clip_point(polys: pcbnew.SHAPE_POLY_SET, poly_idx: int, corner_idx: int) -> None:
+            [point_x, point_y] = polys.COutline(poly_idx).GetPoint(corner_idx)
+            if point_x > max_edge_x:
+                point_x = max_edge_x
+            if point_x < min_edge_x:
+                point_x = min_edge_x
+            if point_y > max_edge_y:
+                point_y = max_edge_y
+            if point_y < min_edge_y:
+                point_y = min_edge_y
+
+            polys.COutline(poly_idx).SetPoint(corner_idx, pcbnew.VECTOR2I(point_x, point_y))
+
         for zone in zones:
-
-            outline = zone.Outline()
             zone.SetNet(self.GNDnet)
-            zone.UnFill()
-            zone.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_NEVER)
-            for i in range(outline.FullPointCount()):
-                [point_x, point_y] = outline.COutline(0).GetPoint(i)
-                [point_x, point_y] = [pcbnew.ToMM(point_x), pcbnew.ToMM(point_y)]
-                if point_x > max_edge_x:
-                    point_x = max_edge_x
-                if point_x < min_edge_x:
-                    point_x = min_edge_x
-                if point_y > max_edge_y:
-                    point_y = max_edge_y
-                if point_y < min_edge_y:
-                    point_y = min_edge_y
-
-                outline.COutline(0).SetPoint(i, pcbnew.VECTOR2I_MM(float(point_x), float(point_y)))
+            polys = zone.Outline()
+            for poly_idx in range(polys.OutlineCount()):
+                for corner_idx in range(polys.COutline(poly_idx).PointCount()):
+                    clip_point(polys, poly_idx, corner_idx)
             if zone.CalculateOutlineArea() < 1e-5:
+                to_remove.append(zone)
+                continue
+
+            for polys in (zone.GetFilledPolysList(layer) for layer in zone.GetLayerSet().CuStack()):
+                pidx_to_remove = []
+                for poly_idx in range(polys.OutlineCount()):
+                    for corner_idx in range(polys.COutline(poly_idx).PointCount()):
+                        clip_point(polys, poly_idx, corner_idx)
+                    polys.RemoveNullSegments()
+                    polys.SimplifyOutlines()
+                    if polys.COutline(poly_idx).PointCount() == 0:
+                        pidx_to_remove.append(poly_idx)
+                for idx in reversed(pidx_to_remove):
+                    polys.RemoveOutline(idx)
+
+            if zone.CalculateFilledArea() < 1e-5:
                 to_remove.append(zone)
         for zone in to_remove:
             self.board.Remove(zone)
-
-        filler = pcbnew.ZONE_FILLER(self.board)
-        filler.Fill(zones)
 
     def to_gnd(self, track: pcbnew.PCB_TRACK) -> None:
         """Set netclass of net to GND."""
@@ -561,17 +575,8 @@ class PCBSlice:
         self.footprint_to_pad()
         new_edges = self.remove_footprints(edges)
 
-        # Create GND zones with offset left for simulation ports
-        zone_offset = 0.8
-        zone_corners = [
-            new_edges[0] + zone_offset,
-            new_edges[1] - zone_offset,
-            new_edges[2] + zone_offset,
-            new_edges[3] - zone_offset,
-        ]
-
         sp_track_termination = self.cut_tracks(new_edges)
-        self.resize_zones(zone_corners)
+        self.resize_zones(new_edges)
 
         mask_layers = [pcbnew.F_Mask, pcbnew.B_Mask]
 
@@ -1213,19 +1218,6 @@ class PCBSlice:
         netclasses = self.board.GetAllNetClasses().items()
         for _, netclass in netclasses:
             netclass.SetClearance(pcbnew.FromMM(clearance_value))
-
-    def change_zone_properties(self) -> None:
-        """Change properties of the zones."""
-        zones = self.board.Zones()
-
-        for zone in zones:
-            zone.SetMinThickness(pcbnew.FromMM(0.025))
-            zone.SetLocalClearance(pcbnew.FromMM(0.005))
-
-    def refill_zones(self) -> None:
-        """Refill existing zones."""
-        filler = pcbnew.ZONE_FILLER(self.board)
-        filler.Fill(self.board.Zones())
 
 
 def netclass_list(path: str) -> None:
