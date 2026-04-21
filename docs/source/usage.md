@@ -227,6 +227,13 @@ Create an `init.json` file:
 Define `netclass` or simply type `all` to create a configuration for every net.
 If netclass is left empty, the nets field can be filled with selected nets.
 
+```note
+Specifying `"netclass": "all"` will select all netclasses that match following regex `r"^\d+Ohm-(\w|\d|-)*"`, eg. `100Ohm-CSI-diff`, `50Ohm-SDIO-se`, `40Ohm-ddr`.
+
+Netclasses containing differential pairs must include keyword `diff` in their names.
+Otherwise the traces within the netclass will be considered as single-ended.
+```
+
 Define the input `-i` file and output `-o` directory, where
 [configuration files](#single-configuration-file-description)
 are going to be generated.
