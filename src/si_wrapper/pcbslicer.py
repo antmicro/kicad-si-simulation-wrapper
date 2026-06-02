@@ -877,7 +877,7 @@ class PCBSlice:
 
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
-        new_via.SetViaType(pcbnew.VIATYPE_BLIND_BURIED)
+        new_via.SetViaType(pcbnew.VIATYPE_BURIED)
         new_via.SetFrontWidth(width_t)
         new_via.SetNet(self.GNDnet)
         new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
@@ -977,9 +977,10 @@ class PCBSlice:
 
             orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
 
-            sp_instance = self.SimPortFootprint.Duplicate()
+            sp_instance = self.SimPortFootprint.Duplicate(False)
             sp_instance.SetPosition(pcbnew.VECTOR2I_MM(x, y))
-            sp_instance.SetReference(f"SP{self.static_sp_index}")
+            footprint_instance = pcbnew.Cast_to_FOOTPRINT(sp_instance)
+            footprint_instance.SetReference(f"SP{self.static_sp_index}")
 
             segment = pcbnew.PCB_SHAPE(self.board)
             segment.SetShape(pcbnew.S_RECT)
@@ -988,20 +989,20 @@ class PCBSlice:
             segment.SetStart(pcbnew.VECTOR2I_MM(x - pp.size.x / 2, y))
             segment.SetEnd(pcbnew.VECTOR2I_MM(x + pp.size.x / 2, y - pp.size.y))
             seg2 = segment.Duplicate()
-            sp_instance.Add(segment)
+            footprint_instance.Add(segment)
             segment.SetStart(pcbnew.VECTOR2I_MM(x - 1.2 * pp.size.x / 2, y + 0.1 * pp.size.y))
             segment.SetEnd(pcbnew.VECTOR2I_MM(x + 1.2 * pp.size.x / 2, y - 1.1 * pp.size.y))
             seg2.SetLayer(pcbnew.Eco2_User)
-            sp_instance.Add(seg2)
-            sp_instance.SetOrientation(orient_eda)
-            self.board.Add(sp_instance)
+            footprint_instance.Add(seg2)
+            footprint_instance.SetOrientation(orient_eda)
+            self.board.Add(footprint_instance)
             for fp in self.board.GetFootprints():
                 if (
                     not fp.Pads().empty()
                     and fp.Pads()[0].GetNetname() not in self.netname
                     and fp.Pads()[0].GetNetname() != pp.net
                     and fp.Pads()[0].HitTest(
-                        sp_instance.GetBoundingBox(False, False),
+                        footprint_instance.GetBoundingBox(False, False),
                         False,
                     )
                 ):
