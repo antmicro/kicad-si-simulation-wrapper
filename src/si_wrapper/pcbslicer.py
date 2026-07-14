@@ -15,6 +15,23 @@ import si_wrapper.constant as const
 
 logger = logging.getLogger(__name__)
 
+# KiCad 10 compatibility: the old VIATYPE_BLIND_BURIED enum was split into
+# VIATYPE_BLIND and VIATYPE_BURIED. Provide a fallback so existing code keeps
+# selecting a buried/blind via type.
+VIATYPE_BLIND_BURIED = getattr(pcbnew, "VIATYPE_BLIND_BURIED", pcbnew.VIATYPE_BURIED)
+
+
+def duplicate_footprint(footprint: pcbnew.FOOTPRINT) -> pcbnew.FOOTPRINT:
+    """Duplicate a FOOTPRINT, returning a FOOTPRINT instance.
+
+    KiCad 9's FOOTPRINT.Duplicate() returned a FOOTPRINT directly; KiCad 10
+    returns a BOARD_ITEM, so we cast it back when needed.
+    """
+    dup = footprint.Duplicate(False)
+    if not isinstance(dup, pcbnew.FOOTPRINT):
+        dup = pcbnew.Cast_to_FOOTPRINT(dup)
+    return dup
+
 
 @dataclass
 class Point:
@@ -870,14 +887,14 @@ class PCBSlice:
 
             self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
             self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
-            sp_instance = self.SimPortFootprint.Duplicate()
+            sp_instance = duplicate_footprint(self.SimPortFootprint)
             self.board.Add(sp_instance)
             self.static_sp_index += 1
             return 0
 
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
-        new_via.SetViaType(pcbnew.VIATYPE_BLIND_BURIED)
+        new_via.SetViaType(VIATYPE_BLIND_BURIED)
         new_via.SetFrontWidth(width_t)
         new_via.SetNet(self.GNDnet)
         new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
@@ -977,7 +994,7 @@ class PCBSlice:
 
             orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
 
-            sp_instance = self.SimPortFootprint.Duplicate()
+            sp_instance = duplicate_footprint(self.SimPortFootprint)
             sp_instance.SetPosition(pcbnew.VECTOR2I_MM(x, y))
             sp_instance.SetReference(f"SP{self.static_sp_index}")
 
