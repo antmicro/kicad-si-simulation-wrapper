@@ -17,7 +17,6 @@ NETINFO_J_PATH = "netinfo.json"
 DEFAULT_SIMULATION_J = {
     "format_version": "1.2",
     "frequency": {"start": 2e8, "stop": 4e9},
-    "max_steps": 50e4,
     "ports": [],
 }
 SQRT2 = 2**0.5
