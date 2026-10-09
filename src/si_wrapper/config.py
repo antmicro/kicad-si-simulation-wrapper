@@ -165,11 +165,8 @@ class PortConfig:
         port_pattern = [
             {
                 "number": number,
-                "width": round(width, 2),
-                "length": round(length, 2),
                 "impedance": impedance,
                 "layer": layer,
-                "plane": plane,
                 "excite": excite,
             },
         ]

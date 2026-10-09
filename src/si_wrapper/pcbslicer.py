@@ -727,8 +727,10 @@ class PCBSlice:
                     multi_connected = True
             else:
                 # Pad has no connected traces OR traces are passthrough
-                multi_connected = True
-                orientation = pad.GetOrientation().AsDegrees()
+                if not [t for t in tracks if (pad.HitTest(t.GetStart()) + pad.HitTest(t.GetEnd())) == 1]:
+                    # no pads on other layer too
+                    multi_connected = True
+                    orientation = pad.GetOrientation().AsDegrees()
 
             size = Point(*pcbnew.ToMM(pad.GetSize()))
             pad_orientation = pad.GetOrientation().AsDegrees()
@@ -844,42 +846,42 @@ class PCBSlice:
         track_beg: str,
     ) -> int:
         """Terminate track with SP or GND via."""
-        if re.search(self.ci_dict(), str(track.GetNetClassName())):
-            if theta % 90 != 0:
-                otrack = self.find_next_orthogonal(track)
-                if otrack is not None:
-                    if track_beg == "end":
-                        x, y = pcbnew.ToMM(otrack.GetEnd())
-                        theta = self.calculate_orientation(otrack.GetEnd(), otrack.GetStart())
-                    if track_beg == "start":
-                        x, y = pcbnew.ToMM(otrack.GetStart())
-                        theta = self.calculate_orientation(otrack.GetStart(), otrack.GetEnd())
+        # if re.search(self.ci_dict(), str(track.GetNetClassName())):
+        #     if theta % 90 != 0:
+        #         otrack = self.find_next_orthogonal(track)
+        #         if otrack is not None:
+        #             if track_beg == "end":
+        #                 x, y = pcbnew.ToMM(otrack.GetEnd())
+        #                 theta = self.calculate_orientation(otrack.GetEnd(), otrack.GetStart())
+        #             if track_beg == "start":
+        #                 x, y = pcbnew.ToMM(otrack.GetStart())
+        #                 theta = self.calculate_orientation(otrack.GetStart(), otrack.GetEnd())
 
-            match theta:
-                case 0:
-                    y = y + 0.5
-                case 90 | -270:
-                    x = x + 0.5
-                case -90 | 270:
-                    x = x - 0.5
-                case -180:
-                    y = y - 0.5
-                case -45 | -315:
-                    y = y + 0.5
-                    theta = 0
-                case -135 | -225:
-                    y = y - 0.5
-                    theta = 180
+        #     match theta:
+        #         case 0:
+        #             y = y + 0.5
+        #         case 90 | -270:
+        #             x = x + 0.5
+        #         case -90 | 270:
+        #             x = x - 0.5
+        #         case -180:
+        #             y = y - 0.5
+        #         case -45 | -315:
+        #             y = y + 0.5
+        #             theta = 0
+        #         case -135 | -225:
+        #             y = y - 0.5
+        #             theta = 180
 
-            orient_eda = pcbnew.EDA_ANGLE(theta, pcbnew.DEGREES_T)
-            self.SimPortFootprint.SetOrientation(orient_eda)
+        #     orient_eda = pcbnew.EDA_ANGLE(theta, pcbnew.DEGREES_T)
+        #     self.SimPortFootprint.SetOrientation(orient_eda)
 
-            self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
-            self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
-            sp_instance = self.SimPortFootprint.Duplicate()
-            self.board.Add(sp_instance)
-            self.static_sp_index += 1
-            return 0
+        #     self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
+        #     self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
+        #     sp_instance = self.SimPortFootprint.Duplicate(False)
+        #     self.board.Add(sp_instance)
+        #     self.static_sp_index += 1
+        #     return 0
 
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
@@ -927,61 +929,61 @@ class PCBSlice:
         for pp in portpads:
             x = pp.position.x
             y = pp.position.y
-            orient = int(pp.port_rotation)
-            signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
-            closest_ang = 0.0
-            if len(signal_pads) >= 2:
-                closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
-                closest_ang = pp.position.rotation(closest_pad)
+            # orient = int(pp.port_rotation)
+            # signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
+            # closest_ang = 0.0
+            # if len(signal_pads) >= 2:
+            #     closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
+            #     closest_ang = pp.position.rotation(closest_pad)
 
-            dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
-            dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
-            closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
-            if pp.ort_case:
-                pad_port_rot_diff = min(abs(orient - pp.pad_rotation - 360), abs(orient - pp.pad_rotation))
-                if pad_port_rot_diff > 90:
-                    pp.pad_rotation += 180
-                    if pp.pad_rotation > 360:
-                        pp.pad_rotation -= 360
-                if pp.pad_rotation > orient:
-                    orient += 45
-                else:
-                    orient -= 45
-            match orient:
-                case 0 | 360:
-                    y += pp.size.y / 2
-                    orient = 0
-                case 180:
-                    y -= pp.size.y / 2
-                    orient = 180
-                case 90:
-                    x += pp.size.y / 2
-                    orient = 90
-                case 270:
-                    x -= pp.size.y / 2
-                    orient = 270
-                case _:
-                    pp.size.y /= 2
-                    pp.size.x *= const.SQRT2
-                    flip_y = 1
-                    flip_x = 1
-                    if 270 >= orient >= 90:
-                        flip_y = -1
-                    if orient >= 180:
-                        flip_x = -1
-                    omap1 = {45: 0, 135: 180, 225: 180, 315: 0}
-                    omap2 = {45: 90, 135: 90, 225: 270, 315: 270}
+            # dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
+            # dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
+            # closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
+            # if pp.ort_case:
+            #     pad_port_rot_diff = min(abs(orient - pp.pad_rotation - 360), abs(orient - pp.pad_rotation))
+            #     if pad_port_rot_diff > 90:
+            #         pp.pad_rotation += 180
+            #         if pp.pad_rotation > 360:
+            #             pp.pad_rotation -= 360
+            #     if pp.pad_rotation > orient:
+            #         orient += 45
+            #     else:
+            #         orient -= 45
+            # match orient:
+            #     case 0 | 360:
+            #         y += pp.size.y / 2
+            #         orient = 0
+            #     case 180:
+            #         y -= pp.size.y / 2
+            #         orient = 180
+            #     case 90:
+            #         x += pp.size.y / 2
+            #         orient = 90
+            #     case 270:
+            #         x -= pp.size.y / 2
+            #         orient = 270
+            #     case _:
+            #         pp.size.y /= 2
+            #         pp.size.x *= const.SQRT2
+            #         flip_y = 1
+            #         flip_x = 1
+            #         if 270 >= orient >= 90:
+            #             flip_y = -1
+            #         if orient >= 180:
+            #             flip_x = -1
+            #         omap1 = {45: 0, 135: 180, 225: 180, 315: 0}
+            #         omap2 = {45: 90, 135: 90, 225: 270, 315: 270}
 
-                    if (flip_y == -1) ^ (270 > closest_ang > 90):
-                        x += flip_x * dy
-                        y += flip_y * dx
-                        orient = omap2[orient]
-                    else:
-                        y += flip_y * dy
-                        x += flip_x * dx
-                        orient = omap1[orient]
+            #         if (flip_y == -1) ^ (270 > closest_ang > 90):
+            #             x += flip_x * dy
+            #             y += flip_y * dx
+            #             orient = omap2[orient]
+            #         else:
+            #             y += flip_y * dy
+            #             x += flip_x * dx
+            #             orient = omap1[orient]
 
-            orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
+            # orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
 
             sp_instance = self.SimPortFootprint.Duplicate(False)
             sp_instance.SetPosition(pcbnew.VECTOR2I_MM(x, y))
@@ -1000,7 +1002,7 @@ class PCBSlice:
             segment.SetEnd(pcbnew.VECTOR2I_MM(x + 1.2 * pp.size.x / 2, y - 1.1 * pp.size.y))
             seg2.SetLayer(pcbnew.Eco2_User)
             footprint_instance.Add(seg2)
-            footprint_instance.SetOrientation(orient_eda)
+            # footprint_instance.SetOrientation(orient_eda)
             self.board.Add(footprint_instance)
             for fp in self.board.GetFootprints():
                 if (

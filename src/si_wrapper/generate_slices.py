@@ -167,10 +167,10 @@ def main(
         out_path = os.path.join(dir_path, file_path)
         check_path_exit(path=out_path)
 
-        neighbour_offset = settings.get_neighbour_offset()
-        neighbour_cp = settings.get_neighbour_common_points()
-        neighbour_netlist = settings.get_neighbour_list()
-        neighbour_inuse = settings.get_neighbour_in_use()
+        # neighbour_offset = settings.get_neighbour_offset()
+        # neighbour_cp = settings.get_neighbour_common_points()
+        # neighbour_netlist = settings.get_neighbour_list()
+        # neighbour_inuse = settings.get_neighbour_in_use()
 
         # Get designated track or tracks
         des_net_1, des_net_2 = pcb_slice.get_des_tracks()
@@ -210,18 +210,18 @@ def main(
         if des_net_2 != []:
             portpads2 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[1])
 
-        if neighbour_inuse:
-            logger.info("Looking for neighbouring tracks...")
-            nearest_net_names = pcb_slice.find_nearest_to_designated_net(
-                net_start_pos, net_end_pos, neighbour_offset, neighbour_cp, neighbour_netlist
-            )
+        # if neighbour_inuse:
+        #     logger.info("Looking for neighbouring tracks...")
+        #     nearest_net_names = pcb_slice.find_nearest_to_designated_net(
+        #         net_start_pos, net_end_pos, neighbour_offset, neighbour_cp, neighbour_netlist
+        #     )
 
         logger.info("Terminating Tracks...")
         pad_pos = pcb_slice.get_des_pads_points()
         terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos, pad_pos], offset)
-
-        if neighbour_inuse:
-            pcb_slice.remove_pads(nearest_net_names)
+        terminate_tracks=[]
+        # if neighbour_inuse:
+        #     pcb_slice.remove_pads(nearest_net_names)
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
@@ -257,7 +257,8 @@ def main(
             )
 
         # Get information about other nets for placing simulation ports
-        trs = pcb_slice.get_all_tracks()
+        # trs = pcb_slice.get_all_tracks()
+        trs=[]
         if len(trs) > 0:  # Check if exists any other
             other_pads = pcb_slice.get_other_pads()
             other_net_length, other_net_width, other_net_start_pos, other_net_end_pos, other_net_impedance, _ = (
