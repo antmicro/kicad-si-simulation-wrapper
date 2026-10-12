@@ -168,6 +168,7 @@ class PCBSlice:
         * starting position of the tracks of the net,
         * ending position of the tracks of the net,
         * nominal impedance.
+        * netclass of the net
         """
         track_length = 0
         track_widths: float = 0
@@ -175,6 +176,7 @@ class PCBSlice:
         end_pos = []
         impedance: float = 0
         diff_impedance = None
+        interface = None
 
         try:
             for track in tracks:
@@ -186,6 +188,9 @@ class PCBSlice:
                 track_length += track.GetLength()
                 track_widths = track.GetWidth()
                 impedance_str = re.search(r"^\d+", track.GetNetClassName())
+                main_netclass = track.GetNetClassName().partition(",")[0]
+                interface = main_netclass.partition("_")[2] or None
+
                 assert impedance_str is not None
                 imp = float(impedance_str.group())
                 if "se" in track.GetNetClassName().lower():
@@ -204,6 +209,7 @@ class PCBSlice:
             list(end_pos),
             float(impedance),
             diff_impedance,
+            interface,
         ]
 
     def get_pads(self) -> List[pcbnew.PAD]:

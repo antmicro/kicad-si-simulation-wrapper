@@ -176,7 +176,7 @@ class PortConfig:
 
         self.load_save(port_keyword, port_pattern)
 
-    def add_differential_pair(self, indexes: list, name: str, diff_impedance: float) -> None:
+    def add_differential_pair(self, indexes: list, name: str, diff_impedance: float, interface: str | None) -> None:
         """Add differential pair to config."""
         start_p = indexes[0]
         stop_p = indexes[1]
@@ -194,6 +194,11 @@ class PortConfig:
                 "diff_impedance": diff_impedance,
             },
         ]
+
+        if interface:
+            diff_pattern[0]["interface"] = {
+                "name": interface,
+            }
 
         self.load_save(diff_keyword, diff_pattern)
 

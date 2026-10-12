@@ -176,12 +176,12 @@ def main(
         des_net_1, des_net_2 = pcb_slice.get_des_tracks()
 
         # Get information about single selected line or for differential pairs - two lines
-        net_length_1, net_width_1, net_start_pos_1, net_end_pos_1, net_impedance_1, diff_impedance = (
+        net_length_1, net_width_1, net_start_pos_1, net_end_pos_1, net_impedance_1, diff_impedance, interface_name = (
             pcb_slice.get_selected_track_info(des_net_1)
         )
 
         if des_net_2 != []:
-            net_length_2, net_width_2, _, _, net_impedance_2, _ = pcb_slice.get_selected_track_info(des_net_2)
+            net_length_2, net_width_2, _, _, net_impedance_2, _, _ = pcb_slice.get_selected_track_info(des_net_2)
             logger.info("Differential tracks recognized")
             is_diff = True
         else:
@@ -197,7 +197,7 @@ def main(
         # Combine list of two separate tracks into one
         logger.info("Gathering information about selected net/s...")
         designated_tracks = des_net_1 + des_net_2
-        net_length, net_width, net_start_pos, net_end_pos, net_impedance, _ = pcb_slice.get_selected_track_info(
+        net_length, net_width, net_start_pos, net_end_pos, net_impedance, _, _ = pcb_slice.get_selected_track_info(
             designated_tracks
         )
 
@@ -304,7 +304,7 @@ def main(
                 diff_index_list.append(pp.idx - 1)
                 excite[1] = False
 
-            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance)
+            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance, interface_name)
 
         pp_grouped: Dict[str, List[PortPad]] = {}
         if len(trs) > 0:
@@ -329,7 +329,7 @@ def main(
                         [track]
                     )
                     break
-            port_cfg.add_differential_pair(check_diffs([p.idx - 1 for p in ppg]), nn, diff_impedance)
+            port_cfg.add_differential_pair(check_diffs([p.idx - 1 for p in ppg]), nn, diff_impedance, None)
 
         pcb_slice.save_slice(out_path)
 
