@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
-from typing import Any, Iterable, List, Set, Optional
+from typing import Any, List, Set, Optional
 from dataclasses import dataclass
 import numpy as np
 import pcbnew
@@ -40,25 +40,8 @@ class PortPad:
     """Pad origin coordinates"""
     flipped: bool
     """False- pad on F.Cu; True- pad on B.Cu"""
-    port_rotation: float
-    """Rotation of simulation port (based on trace that exits pad)"""
-    pad_rotation: float
-    """Rotation of pad"""
-    size: Point
-    """Size of pad"""
     multi_connected: bool
     """True if more than one trace that exits pad"""
-    opt_rating: int
-    """How optimal is placement of this port.
-    
-    There are 3 conditions for optimal port placement:
-    - pad is vertical or horizontal
-    - pad is rectangle
-    - trace exits at the same angle as pad is oriented
-    0 - all conditions fulfilled, 3 - none of conditions fulfilled
-    """
-    ort_case: bool
-    """Pad is not vertical/horizontal, but trace that exits it is"""
     net: str
     """Port net name"""
     idx: int = 0
@@ -159,6 +142,15 @@ class PCBSlice:
 
         layer, lcopp_num = self.get_num_layers(track_in.GetLayerName())
         return tracks_out, layer, lcopp_num
+
+    @staticmethod
+    def get_netclass_impedance(netclass: str) -> tuple[float, float | None]:
+        impedance_str = re.search(r"^\d+", netclass)
+        assert impedance_str is not None
+        imp = float(impedance_str.group())
+        if "se" in netclass.lower():
+            return imp, None
+        return 50, imp
 
     def get_selected_track_info(self, tracks: list[Any]) -> list:
         """Give information about track. It returns.
@@ -278,208 +270,89 @@ class PCBSlice:
         if re.search(self.ci_dict(), str(track.GetNetClassName())) is None:
             track.SetNet(self.GNDnet)
 
+    @staticmethod
+    def clip_segment_to_bbox(
+        seg: tuple[Point, Point], bbox: tuple[float, float, float, float]
+    ) -> tuple[Point, Point] | None:
+        """
+        Clip segment  `seg` to an axis-aligned bounding box.
+
+        Args:
+            seg: (Point(x0, y0), Point(x1, y1)) segment to clip
+            bbox: (xmin, ymin, xmax, ymax)
+
+        Returns:
+            (Point(x0, y0), Point(x1, y1)) for the clipped segment,
+            or None if entirely outside.
+        """
+        xmin, ymin, xmax, ymax = bbox
+
+        dx = seg[1].x - seg[0].x
+        dy = seg[1].y - seg[0].y
+
+        t_min, t_max = 0.0, 1.0
+
+        for p, q in [
+            (-dx, seg[0].x - xmin),
+            (dx, xmax - seg[0].x),
+            (-dy, seg[0].y - ymin),
+            (dy, ymax - seg[0].y),
+        ]:
+            if p == 0:
+                if q < 0:
+                    return None
+                continue
+
+            r = q / p
+
+            if p < 0:
+                t_min = max(t_min, r)
+            else:
+                t_max = min(t_max, r)
+
+            if t_min > t_max:
+                return None
+
+        start = Point(seg[0].x + t_min * dx, seg[0].y + t_min * dy)
+        end = Point(seg[0].x + t_max * dx, seg[0].y + t_max * dy)
+
+        return start, end
+
     def cut_tracks(self, edges: list) -> list:
         """Remove tracks existing out of the EdgeCuts layer."""
-        orient = 0
         sp_tracks = []
 
         for track in self.board.GetTracks():
             self.to_gnd(track)
 
-            [start_x, start_y] = pcbnew.ToMM(track.GetStart())
-            [end_x, end_y] = pcbnew.ToMM(track.GetEnd())
+            start, end = Point(*pcbnew.ToMM(track.GetStart())), Point(*pcbnew.ToMM(track.GetEnd()))
 
             width = track.GetFrontWidth() if isinstance(track, pcbnew.PCB_VIA) else track.GetWidth()
             track_radius = pcbnew.ToMM(width) / 2
-            [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = edges
+            [xmax, xmin, ymax, ymin] = edges
 
-            max_edge_x -= track_radius
-            max_edge_y -= track_radius
-            min_edge_x += track_radius
-            min_edge_y += track_radius
+            xmax -= track_radius
+            ymax -= track_radius
+            xmin += track_radius
+            ymin += track_radius
 
-            # Define corners #
-            top_left_corner = [min_edge_x, min_edge_y]
-            top_right_corner = [max_edge_x, min_edge_y]
-            bottom_left_corner = [min_edge_x, max_edge_y]
-            bottom_right_corner = [max_edge_x, max_edge_y]
+            clipped_trace = PCBSlice.clip_segment_to_bbox((start, end), (xmin, ymin, xmax, ymax))
 
-            if (
-                (start_x < min_edge_x and end_x < min_edge_x)
-                or (start_x > max_edge_x and end_x > max_edge_x)
-                or (start_y < min_edge_y and end_y < min_edge_y)
-                or (start_y > max_edge_y and end_y > max_edge_y)
-                or max_edge_x < min_edge_x
-                or max_edge_y < min_edge_y
-            ):
+            if not clipped_trace:
                 self.board.Delete(track)
                 continue
 
-            if start_x < min_edge_x and end_x > min_edge_x:
-                # [StartCheck, SEdge, EEdge] = [True, top_left_edge, bottom_left_edge]
-                start_x, start_y = self.calculate_intersection(
-                    top_left_corner,
-                    bottom_left_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="start",
-                )
-                orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
-                if (
-                    self.terminate_track(
-                        start_x,
-                        start_y,
-                        orient,
-                        track.GetWidth(),
-                        track,
-                        track_beg="start",
-                    )
-                    == 0
-                ):
+            new_start, new_end = clipped_trace
+            track.SetStart(pcbnew.VECTOR2I_MM(float(new_start.x), float(new_start.y)))
+            track.SetEnd(pcbnew.VECTOR2I_MM(float(new_end.x), float(new_end.y)))
+            if new_start != start:
+                if self.terminate_track(start.x, start.y, track.GetWidth(), track) == 0:
                     sp_tracks.append(track)
-
-            if start_x > min_edge_x and end_x < min_edge_x:
-                # [EndCheck, SEdge, EEdge] = [True, top_left_edge, bottom_left_edge]
-                end_x, end_y = self.calculate_intersection(
-                    top_left_corner,
-                    bottom_left_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="end",
-                )
-                orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
-                if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
-                    sp_tracks.append(track)
-
-            if start_x < max_edge_x and end_x > max_edge_x:
-                # [EndCheck, SEdge, EEdge] = [True, top_right_edge, bottom_right_edge]
-                end_x, end_y = self.calculate_intersection(
-                    top_right_corner,
-                    bottom_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="end",
-                )
-                orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
-                if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
-                    sp_tracks.append(track)
-
-            if start_x > max_edge_x and end_x < max_edge_x:
-                # [StartCheck, SEdge, EEdge] = [True, top_right_edge, bottom_right_edge]
-                [start_x, start_y] = self.calculate_intersection(
-                    top_right_corner,
-                    bottom_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="start",
-                )
-                orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
-                if (
-                    self.terminate_track(
-                        start_x,
-                        start_y,
-                        orient,
-                        track.GetWidth(),
-                        track,
-                        track_beg="start",
-                    )
-                    == 0
-                ):
-                    sp_tracks.append(track)
-
-            if start_y < min_edge_y and end_y > min_edge_y:
-                # [StartCheck, SEdge, EEdge] = [True, top_left_edge, top_right_edge]
-                [start_x, start_y] = self.calculate_intersection(
-                    top_left_corner,
-                    top_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="start",
-                )
-                orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
-                if (
-                    self.terminate_track(
-                        start_x,
-                        start_y,
-                        orient,
-                        track.GetWidth(),
-                        track,
-                        track_beg="start",
-                    )
-                    == 0
-                ):
-                    sp_tracks.append(track)
-
-            if start_y > min_edge_y and end_y < min_edge_y:
-                # [EndCheck, SEdge, EEdge] = [True, top_left_edge, top_right_edge]
-                end_x, end_y = self.calculate_intersection(
-                    top_left_corner,
-                    top_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="end",
-                )
-                orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
-                if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
-                    sp_tracks.append(track)
-
-            if start_y < max_edge_y and end_y > max_edge_y:
-                # [EndCheck, SEdge, EEdge] = [True, bottom_left_edge, bottom_right_edge]
-                [end_x, end_y] = self.calculate_intersection(
-                    bottom_left_corner,
-                    bottom_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="end",
-                )
-                orient = self.calculate_orientation((end_x, end_y), (start_x, start_y))
-                track.SetEnd(pcbnew.VECTOR2I_MM(float(end_x), float(end_y)))
-                if self.terminate_track(end_x, end_y, orient, track.GetWidth(), track, track_beg="end") == 0:
-                    sp_tracks.append(track)
-
-            if start_y > max_edge_y and end_y < max_edge_y:
-                # [StartCheck, SEdge, EEdge] = [True, bottom_left_edge, bottom_right_edge]
-                [start_x, start_y] = self.calculate_intersection(
-                    bottom_left_corner,
-                    bottom_right_corner,
-                    track_start=[start_x, start_y],
-                    track_end=[end_x, end_y],
-                    track_beg="start",
-                )
-                orient = self.calculate_orientation((start_x, start_y), (end_x, end_y))
-                track.SetStart(pcbnew.VECTOR2I_MM(float(start_x), float(start_y)))
-                if (
-                    self.terminate_track(
-                        start_x,
-                        start_y,
-                        orient,
-                        track.GetWidth(),
-                        track,
-                        track_beg="start",
-                    )
-                    == 0
-                ):
+            if new_end != end:
+                if self.terminate_track(end.x, end.y, track.GetWidth(), track) == 0:
                     sp_tracks.append(track)
 
         return sp_tracks
-
-    def hide_pads(self, pads: Any, simports_pos: tuple[Iterable, Iterable]) -> None:
-        """Remove pads from project."""
-        for footprint in self.board.GetFootprints():
-            fp_x = footprint.GetPosition()[0]
-            fp_y = footprint.GetPosition()[1]
-            for x, y in simports_pos:
-                if (pcbnew.ToMM(fp_x) - 1 < x < pcbnew.ToMM(fp_x) + 1) and (
-                    pcbnew.ToMM(fp_y) - 1 < y < pcbnew.ToMM(fp_y) + 1
-                ):
-                    if re.search(r"SP\d+", str(footprint.GetReference())) is None:
-                        self.board.Remove(footprint)
 
     def remove_footprints(self, edges: list) -> list:
         """Change size of the board to edge nearest footprints and remove those out of the range of the board."""
@@ -495,15 +368,12 @@ class PCBSlice:
         for item in to_remove:
             self.board.Delete(item)
 
-        # checkLayers = [pcbnew.F_CrtYd, pcbnew.B_CrtYd]
-
         for footprint in self.board.GetFootprints():
             bbox = footprint.GetFpPadsLocalBbox()
             start_x = pcbnew.ToMM(bbox.GetLeft())
             start_y = pcbnew.ToMM(bbox.GetTop())
             end_x = pcbnew.ToMM(bbox.GetRight())
             end_y = pcbnew.ToMM(bbox.GetBottom())
-            # print(start_x, start_y, end_x, end_y, footprint.GetReference())
             # Set footprints to remove #
             if start_x <= edges[1] and end_x >= edges[1]:
                 new_edges[1] = start_x - 0.2
@@ -519,25 +389,23 @@ class PCBSlice:
     def footprint_to_pad(self) -> None:
         """Split every footprint into separate pad, then turn pad into footprint."""
         pads_as_fp = []
-        for pad in self.board.GetPads():
-            for footprint in self.board.GetFootprints():
-                for pad in footprint.Pads():
-                    virt_footprint = pcbnew.FOOTPRINT(self.board)
-                    new_pad = pcbnew.PAD(pad)
-                    new_pad.SetPos(pcbnew.VECTOR2I(0, 0))  # Set pad position to origin of the footprint
-                    if re.search(self.ci_dict(), str(pad.GetNetClassName())) is None:
-                        new_pad.SetNet(self.GNDnet)
-                    virt_footprint.Add(new_pad)
-                    # virt_footprint.SetReference(f'{footprint.GetReference()}_{pad.GetName()}')
-                    virt_footprint.SetReference(f"{footprint.GetReference()}")
-                    virt_footprint.Reference().SetVisible(False)  # Hide reference text
-                    virt_footprint.SetLayer(footprint.GetLayer())
-                    virt_footprint.SetPosition(pad.GetPosition())
-                    virt_footprint.SetValue(footprint.GetValue())
-                    virt_footprint.Value().SetVisible(False)
-                    pads_as_fp.append(virt_footprint)
+        for footprint in self.board.GetFootprints():
+            for pad in footprint.Pads():
+                virt_footprint = pcbnew.FOOTPRINT(self.board)
+                new_pad = pcbnew.PAD(pad)
+                new_pad.SetPos(pcbnew.VECTOR2I(0, 0))  # Set pad position to origin of the footprint
+                if re.search(self.ci_dict(), str(pad.GetNetClassName())) is None:
+                    new_pad.SetNet(self.GNDnet)
+                virt_footprint.Add(new_pad)
+                virt_footprint.SetReference(f"{footprint.GetReference()}")
+                virt_footprint.Reference().SetVisible(False)  # Hide reference text
+                virt_footprint.SetLayer(footprint.GetLayer())
+                virt_footprint.SetPosition(pad.GetPosition())
+                virt_footprint.SetValue(footprint.GetValue())
+                virt_footprint.Value().SetVisible(False)
+                pads_as_fp.append(virt_footprint)
 
-                self.board.Remove(footprint)
+            self.board.Remove(footprint)
 
         for fp in pads_as_fp:
             self.board.Add(fp)
@@ -591,14 +459,6 @@ class PCBSlice:
             if drawing.GetLayer() not in mask_layers:
                 self.board.Delete(drawing)
 
-        # Create offset for edge cuts
-        edge_offset = 1.0
-        ec = [
-            new_edges[0] + edge_offset,
-            new_edges[1] - edge_offset,
-            new_edges[2] + edge_offset,
-            new_edges[3] - edge_offset,
-        ]
         ec = [float(f(a, b)) for f, a, b in zip(func, edges_org, new_edges, strict=True)]
         edge_corners = [[ec[1], ec[3]], [ec[0], ec[2]]]
 
@@ -627,65 +487,9 @@ class PCBSlice:
         return sp_track_termination
 
     @staticmethod
-    def calculate_intersection(
-        edge_start: list, edge_end: list, track_start: list, track_end: list, track_beg: str
-    ) -> tuple[Any, Any]:
-        """Calculate intersection point of two straight lines."""
-        # Calculate matrixes for edges #
-        a_xy = np.array([[edge_start[0], edge_start[1]], [edge_end[0], edge_end[1]]])
-        a_x = np.array([[edge_start[0], 1], [edge_end[0], 1]])
-        a_y = np.array([[edge_start[1], 1], [edge_end[1], 1]])
-
-        # Calculate matrixes for tracks #
-        b_xy = np.array([[track_start[0], track_start[1]], [track_end[0], track_end[1]]])
-        b_x = np.array([[track_start[0], 1], [track_end[0], 1]])
-        b_y = np.array([[track_start[1], 1], [track_end[1], 1]])
-
-        # Calculate determinants #
-        det_b_xy = np.linalg.det(b_xy)
-        det_b_x = np.linalg.det(b_x)
-        det_b_y = np.linalg.det(b_y)
-        det_a_xy = np.linalg.det(a_xy)
-        det_a_x = np.linalg.det(a_x)
-        det_a_y = np.linalg.det(a_y)
-
-        # Temp matrices #
-        c1 = np.array([[det_a_xy, det_a_x], [det_b_xy, det_b_x]])
-        c2 = np.array([[det_a_x, det_a_y], [det_b_x, det_b_y]])
-        c3 = np.array([[det_a_xy, det_a_y], [det_b_xy, det_b_y]])
-
-        det_c1 = np.linalg.det(c1)
-        det_c2 = np.linalg.det(c2)
-        det_c3 = np.linalg.det(c3)
-
-        # Points
-        if track_beg == "start":
-            if det_c3 == 0:
-                p_x = track_start[0]
-                p_y = track_start[1]
-            else:
-                p_x = det_c1 / det_c2
-                p_y = det_c3 / det_c2
-        elif track_beg == "end":
-            if det_c3 == 0:
-                p_x = track_end[0]
-                p_y = track_end[1]
-            else:
-                p_x = det_c1 / det_c2
-                p_y = det_c3 / det_c2
-
-        return p_x, p_y
-
-    @staticmethod
     def calculate_orientation(start_track: tuple[Any, Any], end_track: tuple[Any, Any]) -> int:
         """Return orientation."""
         return int(round(Point(*start_track).rotation(Point(*end_track))))
-
-    @staticmethod
-    def is_in_circle(center: list, radius: float, x: int, y: int) -> bool:
-        """Check if is located in field of radius of the defined circle."""
-        d = np.sqrt((center[0] - x) ** 2 + (center[1] - y) ** 2)
-        return d <= radius
 
     @staticmethod
     def pad_exit_angle(pad: pcbnew.Pad, track: pcbnew.PCB_TRACK) -> int:
@@ -730,25 +534,6 @@ class PCBSlice:
                 if not [t for t in tracks if (pad.HitTest(t.GetStart()) + pad.HitTest(t.GetEnd())) == 1]:
                     # no pads on other layer too
                     multi_connected = True
-                    orientation = pad.GetOrientation().AsDegrees()
-
-            size = Point(*pcbnew.ToMM(pad.GetSize()))
-            pad_orientation = pad.GetOrientation().AsDegrees()
-            if size.x > size.y:
-                size = Point(size.y, size.x)
-                pad_orientation += 90
-            if pad_orientation > 360:
-                pad_orientation -= 360
-
-            orientation = 45 * round(orientation / 45)
-            orientation = orientation if orientation > 0 else orientation + 360
-            ort_angles = [0, 90, 180, 270, 360]
-            ort_case = orientation in ort_angles and pad_orientation not in ort_angles
-            optimality_rating = 0
-            pad_shape = pad.GetShape()
-            rect_shapes = [pcbnew.PAD_SHAPE_CHAMFERED_RECT, pcbnew.PAD_SHAPE_RECTANGLE, pcbnew.PAD_SHAPE_ROUNDRECT]
-            optimality_rating += pad_shape not in rect_shapes
-            optimality_rating += (pad_orientation not in ort_angles) + (ort_case or orientation not in ort_angles)
 
             if (
                 (len(included_pads) and pad.GetParent().GetReference() in included_pads)
@@ -759,12 +544,7 @@ class PCBSlice:
                     PortPad(
                         Point(*pad_pos),
                         pad.IsFlipped(),
-                        orientation,
-                        pad_orientation,
-                        size,
                         multi_connected,
-                        optimality_rating,
-                        ort_case,
                         pad.GetNetname(),
                     )
                 )
@@ -775,122 +555,6 @@ class PCBSlice:
             # as they are most likely passthrough and not endpoints
             pad_ports = list(filter(lambda x: not x.multi_connected, pad_ports))
         return pad_ports
-
-    def find_next_orthogonal(self, current_track: pcbnew.PCB_TRACK) -> pcbnew.PCB_TRACK:
-        """Find next orthogonal track that can contain Simulation Port."""
-        logger.debug(f"Finding next orthogonal track to {current_track.GetNetname()}")
-
-        new_track = None
-        last_end_crd = []
-        last_start_crd = []
-
-        tracks = self.board.GetTracks()
-        i = 0
-        deep = 0
-
-        while i < len(tracks):
-            # if tracks[i].GetNetname() == current_track.GetNetname():
-            if tracks[i].GetNetCode() == current_track.GetNetCode():
-                s_tr = tracks[i].GetStart()
-                e_tr = tracks[i].GetEnd()
-
-                curr_s_tr = current_track.GetStart()
-                curr_e_tr = current_track.GetEnd()
-
-                rules = (
-                    (s_tr == curr_e_tr and e_tr != curr_s_tr)
-                    or (e_tr == curr_s_tr and s_tr != curr_e_tr)
-                    or (s_tr == curr_s_tr and e_tr != curr_e_tr)
-                    or (e_tr == curr_e_tr and s_tr != curr_s_tr)
-                )
-
-                if rules:
-                    if self.calculate_orientation(s_tr, e_tr) % 90 == 0:
-                        new_track = tracks[i]
-                        logger.debug("Track found!")
-                        break
-                    if deep >= 5:
-                        deep = 0
-                        logger.debug("Track not found!")
-                        break
-                    last_start_crd.append(s_tr)
-                    last_end_crd.append(e_tr)
-                    # curr_s_tr = s_tr
-                    # curr_e_tr = e_tr
-                    current_track = tracks[i]
-                    deep += 1
-                    i = 0
-                    continue
-
-                if (e_tr in last_end_crd) and (s_tr in last_start_crd):
-                    i += 1
-                    continue
-            i += 1
-        return new_track
-
-    @staticmethod
-    def euclidean_distance(pad_pos: pcbnew.wxPoint, track_pos: np.ndarray[Any, np.dtype[Any]]) -> float:
-        """Return value of the distance between two points."""
-        pad_pos = np.array(pcbnew.ToMM(pad_pos))
-        track_pos = np.array(track_pos)
-
-        return np.linalg.norm(pad_pos - track_pos)
-
-    def terminate_track(
-        self,
-        x: float,
-        y: float,
-        theta: int,
-        width_t: float,
-        track: pcbnew.PCB_TRACK,
-        track_beg: str,
-    ) -> int:
-        """Terminate track with SP or GND via."""
-        # if re.search(self.ci_dict(), str(track.GetNetClassName())):
-        #     if theta % 90 != 0:
-        #         otrack = self.find_next_orthogonal(track)
-        #         if otrack is not None:
-        #             if track_beg == "end":
-        #                 x, y = pcbnew.ToMM(otrack.GetEnd())
-        #                 theta = self.calculate_orientation(otrack.GetEnd(), otrack.GetStart())
-        #             if track_beg == "start":
-        #                 x, y = pcbnew.ToMM(otrack.GetStart())
-        #                 theta = self.calculate_orientation(otrack.GetStart(), otrack.GetEnd())
-
-        #     match theta:
-        #         case 0:
-        #             y = y + 0.5
-        #         case 90 | -270:
-        #             x = x + 0.5
-        #         case -90 | 270:
-        #             x = x - 0.5
-        #         case -180:
-        #             y = y - 0.5
-        #         case -45 | -315:
-        #             y = y + 0.5
-        #             theta = 0
-        #         case -135 | -225:
-        #             y = y - 0.5
-        #             theta = 180
-
-        #     orient_eda = pcbnew.EDA_ANGLE(theta, pcbnew.DEGREES_T)
-        #     self.SimPortFootprint.SetOrientation(orient_eda)
-
-        #     self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
-        #     self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
-        #     sp_instance = self.SimPortFootprint.Duplicate(False)
-        #     self.board.Add(sp_instance)
-        #     self.static_sp_index += 1
-        #     return 0
-
-        new_via = pcbnew.PCB_VIA(self.board)
-        new_via.SetDrill(50000)  # 0.05 mm
-        new_via.SetViaType(pcbnew.VIATYPE_BURIED)
-        new_via.SetFrontWidth(width_t)
-        new_via.SetNet(self.GNDnet)
-        new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
-        self.board.Add(new_via)
-        return 1
 
     def replace_resistors_and_capacitors(self) -> None:
         """Replace every R0 and Capacitor with an track."""
@@ -919,109 +583,36 @@ class PCBSlice:
                                         new_track_d = new_track.Duplicate()
                                         self.board.Add(new_track_d)
 
-    def place_simulation_port(self, portpads: List[PortPad]) -> tuple[list[int], list[Any]]:
+    def place_sim_port_fp(self, x: float, y: float) -> None:
+        self.SimPortFootprint.SetPosition(pcbnew.VECTOR2I_MM(x, y))
+        self.SimPortFootprint.SetReference(f"SP{self.static_sp_index}")
+        self.board.Add(self.SimPortFootprint.Duplicate(False))
+        self.static_sp_index += 1
+
+    def terminate_track(self, x: float, y: float, width_t: float, track: pcbnew.PCB_TRACK) -> int:
+        """Terminate track with SP or GND via."""
+        if re.search(self.ci_dict(), str(track.GetNetClassName())):
+            self.place_sim_port_fp(x, y)
+            return 0
+
+        new_via = pcbnew.PCB_VIA(self.board)
+        new_via.SetDrill(50000)  # 0.05 mm
+        new_via.SetViaType(pcbnew.VIATYPE_BURIED)
+        new_via.SetFrontWidth(width_t)
+        new_via.SetNet(self.GNDnet)
+        new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
+        self.board.Add(new_via)
+        return 1
+
+    def place_simulation_port(self, portpads: List[PortPad]) -> list[int]:
         """Place Simulation Ports on the beginning and ending of the board."""
         index_list = []
-        flip_list = []
-        all_signal_pads = [
-            Point(*pcbnew.ToMM(pad.GetCenter())) for pad in self.board.GetPads() if pad.GetNetname() in self.netname
-        ]
         for pp in portpads:
-            x = pp.position.x
-            y = pp.position.y
-            # orient = int(pp.port_rotation)
-            # signal_pads = [pad for pad in all_signal_pads if pad != pp.position]
-            # closest_ang = 0.0
-            # if len(signal_pads) >= 2:
-            #     closest_pad = min(signal_pads, key=lambda x: x.distance(pp.position))
-            #     closest_ang = pp.position.rotation(closest_pad)
-
-            # dy = 0.5 * pp.size.y * (1 + 1 / const.SQRT2) - 0.5 * pp.size.x / const.SQRT2
-            # dx = 0.5 * pp.size.y / const.SQRT2 - 0.5 * pp.size.x / const.SQRT2
-            # closest_ang = closest_ang if closest_ang > 0 else closest_ang + 360
-            # if pp.ort_case:
-            #     pad_port_rot_diff = min(abs(orient - pp.pad_rotation - 360), abs(orient - pp.pad_rotation))
-            #     if pad_port_rot_diff > 90:
-            #         pp.pad_rotation += 180
-            #         if pp.pad_rotation > 360:
-            #             pp.pad_rotation -= 360
-            #     if pp.pad_rotation > orient:
-            #         orient += 45
-            #     else:
-            #         orient -= 45
-            # match orient:
-            #     case 0 | 360:
-            #         y += pp.size.y / 2
-            #         orient = 0
-            #     case 180:
-            #         y -= pp.size.y / 2
-            #         orient = 180
-            #     case 90:
-            #         x += pp.size.y / 2
-            #         orient = 90
-            #     case 270:
-            #         x -= pp.size.y / 2
-            #         orient = 270
-            #     case _:
-            #         pp.size.y /= 2
-            #         pp.size.x *= const.SQRT2
-            #         flip_y = 1
-            #         flip_x = 1
-            #         if 270 >= orient >= 90:
-            #             flip_y = -1
-            #         if orient >= 180:
-            #             flip_x = -1
-            #         omap1 = {45: 0, 135: 180, 225: 180, 315: 0}
-            #         omap2 = {45: 90, 135: 90, 225: 270, 315: 270}
-
-            #         if (flip_y == -1) ^ (270 > closest_ang > 90):
-            #             x += flip_x * dy
-            #             y += flip_y * dx
-            #             orient = omap2[orient]
-            #         else:
-            #             y += flip_y * dy
-            #             x += flip_x * dx
-            #             orient = omap1[orient]
-
-            # orient_eda = pcbnew.EDA_ANGLE(orient, pcbnew.DEGREES_T)
-
-            sp_instance = self.SimPortFootprint.Duplicate(False)
-            sp_instance.SetPosition(pcbnew.VECTOR2I_MM(x, y))
-            footprint_instance = pcbnew.Cast_to_FOOTPRINT(sp_instance)
-            footprint_instance.SetReference(f"SP{self.static_sp_index}")
-
-            segment = pcbnew.PCB_SHAPE(self.board)
-            segment.SetShape(pcbnew.S_RECT)
-            segment.SetLayer(pcbnew.Eco1_User)
-            segment.SetWidth(pcbnew.FromMM(0.01))
-            segment.SetStart(pcbnew.VECTOR2I_MM(x - pp.size.x / 2, y))
-            segment.SetEnd(pcbnew.VECTOR2I_MM(x + pp.size.x / 2, y - pp.size.y))
-            seg2 = segment.Duplicate()
-            footprint_instance.Add(segment)
-            segment.SetStart(pcbnew.VECTOR2I_MM(x - 1.2 * pp.size.x / 2, y + 0.1 * pp.size.y))
-            segment.SetEnd(pcbnew.VECTOR2I_MM(x + 1.2 * pp.size.x / 2, y - 1.1 * pp.size.y))
-            seg2.SetLayer(pcbnew.Eco2_User)
-            footprint_instance.Add(seg2)
-            # footprint_instance.SetOrientation(orient_eda)
-            self.board.Add(footprint_instance)
-            for fp in self.board.GetFootprints():
-                if (
-                    not fp.Pads().empty()
-                    and fp.Pads()[0].GetNetname() not in self.netname
-                    and fp.Pads()[0].GetNetname() != pp.net
-                    and fp.Pads()[0].HitTest(
-                        footprint_instance.GetBoundingBox(False, False),
-                        False,
-                    )
-                ):
-                    self.board.Remove(fp)
-
             index_list.append(self.static_sp_index)
-            flip_list.append(pp.flipped)
             pp.idx = self.static_sp_index
-            self.static_sp_index += 1
+            self.place_sim_port_fp(pp.position.x, pp.position.y)
 
-        return index_list, flip_list
+        return index_list
 
     def save_slice(self, path: str) -> None:
         """Save .kicad_pcb file of crated slice."""
@@ -1046,7 +637,7 @@ class PCBSlice:
         net_offset: float,
         number_of_common_points: int,
         protected_list: list,
-    ) -> list:
+    ) -> None:
         """Find nearest nets to designated one basing on provided information.
 
         There is a possibility to define area of existing propable neighbour or even
@@ -1146,8 +737,6 @@ class PCBSlice:
         for track in tracks:
             if track.GetNetname() not in names and track.GetNetname() != "GND":
                 self.board.Delete(track)
-
-        return names
 
     def remove_pads(self, condition: list) -> None:
         """Remove pads from board."""

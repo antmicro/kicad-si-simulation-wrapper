@@ -132,34 +132,17 @@ class PortConfig:
         with open(self.path, "w") as write_data:
             json.dump(edit_data, write_data, indent=2)
 
-    def add_port_pad(
-        self,
-        pcb_slice: PCBSlice,
-        port: PortPad,
-        impedance: int,
-        excite: bool,
-    ) -> None:
+    def add_port_pad(self, pcb_slice: PCBSlice, port: PortPad, impedance: int, excite: bool) -> None:
         """Add simulation port to configuration file."""
         layer, _ = pcb_slice.get_num_layers("B.Cu") if port.flipped is True else pcb_slice.get_num_layers("F.Cu")
-        plane = 1 if layer == 0 else layer - 1
         logger.debug(
             f"Designated Net: \
-            | Width: {port.size.x}mm \
             | Impedance: {impedance} \
             | SP{port.idx} | Layer: {layer}"
         )
-        self.add_simulation_port(port.idx, port.size.x * 1000, port.size.y * 1000, impedance, layer, plane, excite)
+        self.add_simulation_port(port.idx, impedance, layer, excite)
 
-    def add_simulation_port(
-        self,
-        number: int,
-        width: float,
-        length: float,
-        impedance: float,
-        layer: int,
-        plane: int,
-        excite: bool,
-    ) -> None:
+    def add_simulation_port(self, number: int, impedance: float, layer: int, excite: bool) -> None:
         """Add simulation port to configuration file."""
         port_keyword = "ports"
         port_pattern = [

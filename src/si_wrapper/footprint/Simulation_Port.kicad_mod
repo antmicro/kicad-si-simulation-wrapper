@@ -1,25 +1,89 @@
-(footprint "Simulation_Port" (version 20221018) (generator pcbnew)
-  (layer "F.Cu")
-  (descr "Place where port in the simulation should be located. Set it's reference to SPx, where x is port number")
-  (attr board_only)
-  (fp_text reference "REF**" (at 0 1 unlocked) (layer "F.Fab")
-      (effects (font (size 1 1) (thickness 0.15)))
-    (tstamp 58e83f31-c518-4277-a1e0-b14454fa521c)
-  )
-  (fp_text value "Simulation_Port" (at 0 5 unlocked) (layer "F.Fab") hide
-      (effects (font (size 1 1) (thickness 0.15)))
-    (tstamp 97531503-cf22-4637-8fb5-f30b2063ffe9)
-  )
-  (fp_text user "{REFERENCE}" (at 0 3) (layer "F.Fab") hide
-      (effects (font (size 1 1) (thickness 0.15)))
-    (tstamp f73f2d1f-3941-41d5-9d90-23935a431caa)
-  )
-  (fp_line (start -0.1 0) (end 0.1 0)
-    (stroke (width 0.02) (type solid)) (layer "F.Fab") (tstamp c6db9097-bc22-4b4c-a880-4bdd1251e00a))
-  (fp_line (start 0 -0.25) (end -0.1 -0.15)
-    (stroke (width 0.02) (type solid)) (layer "F.Fab") (tstamp b4a1ffda-0de7-482a-b38c-4767d567890c))
-  (fp_line (start 0 -0.25) (end 0.1 -0.15)
-    (stroke (width 0.02) (type solid)) (layer "F.Fab") (tstamp df0937b6-4a9a-4836-8082-f3b8a76ce035))
-  (fp_line (start 0 0) (end 0 -0.25)
-    (stroke (width 0.02) (type solid)) (layer "F.Fab") (tstamp 6e87bcfa-306d-4100-b4ac-0d3a9af673f1))
+(footprint "Simulation_Port"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "Place where port in the simulation should be located. Set it's reference to SPx, where x is port number")
+	(property "Reference" "REF**"
+		(at 0 1 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "58e83f31-c518-4277-a1e0-b14454fa521c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Simulation_Port"
+		(at 0 5 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "97531503-cf22-4637-8fb5-f30b2063ffe9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "020de11e-44ff-4386-abd7-521c1db05efd")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "74e6d43d-b05e-4fbc-aea4-225efb32977d")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr board_only)
+	(fp_line
+		(start -0.1 0)
+		(end 0.1 0)
+		(stroke
+			(width 0.02)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c6db9097-bc22-4b4c-a880-4bdd1251e00a")
+	)
+	(fp_line
+		(start 0 0.0984)
+		(end 0 -0.1016)
+		(stroke
+			(width 0.02)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "1feb5803-82e1-446e-bcd4-84d571ca06b4")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 0.0508 -0.0508)
+		(stroke
+			(width 0.01)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "eaed02e0-e8f3-4f40-94d0-a1e3c03f4b20")
+	)
+	(embedded_fonts no)
 )

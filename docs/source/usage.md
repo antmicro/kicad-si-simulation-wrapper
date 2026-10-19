@@ -180,20 +180,13 @@ Incorrect:
 Below, you can find a list of rules that define the way of placing Simulation Ports:
 
 * `Simulation_Port` is a footprint,
-* The maximum number of Simulation Ports placed
-    on a slice prepared for simulation is 8,
 * All Simulation Ports are placed at the beginning and end of the nets,
 * Every single net available on the slice can have more than
     two Simulation Ports, but only one Port's `"excite:"` value set
     in `simulation.json` can be set as `true`,
-* Simulation Ports spearheads are facing each other on the same net,
 * Simulation Ports are named and numbered from SP1 to SPx,
     where x is a natural number and is equal
-    to the number of ports placed on the cutout,
-* Simulation Ports have rotation that is a multiple of 90 degrees,
-* Simulation Ports have to be placed above/under the GND Plane,
-    otherwise the simulation will be corrupted,
-* Simulation Port spearheads have to be placed at the beginning of the track.
+    to the number of ports placed on the slice,
 
 ---
 

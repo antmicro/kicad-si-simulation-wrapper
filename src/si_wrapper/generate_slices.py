@@ -37,22 +37,6 @@ def setup_logging(debug: bool) -> None:
         )
 
 
-def check_path_exit(path: str) -> None:
-    """Check if given path exists, if not, exit."""
-    if path is None or not os.path.exists(path):
-        logger.error(f"The path {path} does not exist.")
-        sys.exit()
-
-
-def check_path_warn(path: str) -> bool:
-    """Check if given path exists, if not, return False."""
-    if path is None or not os.path.exists(path):
-        logger.warn(f"The path {path} does not exist.")
-        return False
-
-    return True
-
-
 def get_pcb_path() -> Any:
     """Check if file with .kicad_pcb extension exists in current folder."""
     for file in os.listdir():
@@ -135,16 +119,12 @@ def main(
         logger.error("No .kicad_pcb file in current directory.")
         sys.exit()
 
-    check_path_exit(path=pcb_path)
-
     if list_nets:
         logger.info("Displaying Netclasses...")
         netclass_list(pcb_path)
 
     cfg_files = [config_file] if config_file.suffix == ".json" else list(config_file.glob("**/*.json"))
     for cfile in cfg_files:
-        is_diff = False
-        plane = 0
         excite = [True, True]
 
         sp_index_1: List = []
@@ -165,12 +145,11 @@ def main(
         net_name = Settings.get_filesystem_name(nets)
         dir_path, file_path = create_output_path(net_name)
         out_path = os.path.join(dir_path, file_path)
-        check_path_exit(path=out_path)
 
-        # neighbour_offset = settings.get_neighbour_offset()
-        # neighbour_cp = settings.get_neighbour_common_points()
-        # neighbour_netlist = settings.get_neighbour_list()
-        # neighbour_inuse = settings.get_neighbour_in_use()
+        neighbour_offset = settings.get_neighbour_offset()
+        neighbour_cp = settings.get_neighbour_common_points()
+        neighbour_netlist = settings.get_neighbour_list()
+        neighbour_inuse = settings.get_neighbour_in_use()
 
         # Get designated track or tracks
         des_net_1, des_net_2 = pcb_slice.get_des_tracks()
@@ -180,26 +159,17 @@ def main(
             pcb_slice.get_selected_track_info(des_net_1)
         )
 
-        if des_net_2 != []:
-            net_length_2, net_width_2, _, _, net_impedance_2, _, _ = pcb_slice.get_selected_track_info(des_net_2)
-            logger.info("Differential tracks recognized")
-            is_diff = True
-        else:
-            net_length_2, net_width_2, _, _, net_impedance_2 = (
-                None,
-                None,
-                None,
-                None,
-                None,
+        is_diff = des_net_2 != []
+        if is_diff:
+            net_length_2, net_width_2, net_start_pos_2, net_end_pos_2, net_impedance_2, _ = (
+                pcb_slice.get_selected_track_info(des_net_2)
             )
+            logger.info("Differential tracks recognized")
+        else:
+            net_length_2, net_width_2, net_start_pos_2, net_end_pos_2, net_impedance_2 = (0, 0, [], [], 0)
             logger.info("Single track recognized")
 
-        # Combine list of two separate tracks into one
-        logger.info("Gathering information about selected net/s...")
-        designated_tracks = des_net_1 + des_net_2
-        net_length, net_width, net_start_pos, net_end_pos, net_impedance, _, _ = pcb_slice.get_selected_track_info(
-            designated_tracks
-        )
+        net_start_pos, net_end_pos = net_start_pos_1 + net_start_pos_2, net_end_pos_1 + net_end_pos_2
 
         logger.info("Gathering information about pads...")
         pads = pcb_slice.get_pads()
@@ -207,21 +177,18 @@ def main(
         # Get orientation of the track/s to place simulation ports
         logger.info("Checking tracks orientation...")
         portpads1 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[0])
-        if des_net_2 != []:
+        if is_diff:
             portpads2 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[1])
 
-        # if neighbour_inuse:
-        #     logger.info("Looking for neighbouring tracks...")
-        #     nearest_net_names = pcb_slice.find_nearest_to_designated_net(
-        #         net_start_pos, net_end_pos, neighbour_offset, neighbour_cp, neighbour_netlist
-        #     )
+        if neighbour_inuse:
+            logger.info("Looking for neighbouring tracks...")
+            pcb_slice.find_nearest_to_designated_net(
+                net_start_pos, net_end_pos, neighbour_offset, neighbour_cp, neighbour_netlist
+            )
 
         logger.info("Terminating Tracks...")
         pad_pos = pcb_slice.get_des_pads_points()
         terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos, pad_pos], offset)
-        terminate_tracks=[]
-        # if neighbour_inuse:
-        #     pcb_slice.remove_pads(nearest_net_names)
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
@@ -243,63 +210,46 @@ def main(
             else:
                 plane = sp_termination_layer - 1
 
-            net_length_3, net_width_3, net_start_pos_3, net_end_pos_3, net_impedance_3, _ = (
-                pcb_slice.get_selected_track_info(whole_track)
-            )
+            net_length_3, net_width_3, _, _, net_impedance_3, _ = pcb_slice.get_selected_track_info(whole_track)
             logger.debug(
                 f"Nets params: Length: {net_length_3} \
                 | Width: {net_width_3} \
                 | Impedance: {net_impedance_3} \
-                | SP{i+1} | Layer: {sp_termination_layer}"
+                | SP{i + 1} | Layer: {sp_termination_layer}"
             )
             port_cfg.add_simulation_port(
                 i + 1, net_width_3 / 1000, 250, net_impedance_3, sp_termination_layer, plane, False
-            )
+            )  # TODO
 
         # Get information about other nets for placing simulation ports
-        # trs = pcb_slice.get_all_tracks()
-        trs=[]
+        trs = pcb_slice.get_all_tracks()
         if len(trs) > 0:  # Check if exists any other
             other_pads = pcb_slice.get_other_pads()
-            other_net_length, other_net_width, other_net_start_pos, other_net_end_pos, other_net_impedance, _ = (
-                pcb_slice.get_selected_track_info(trs)
-            )
-            other_nets = {n.GetNetname() for n in trs}
-            portpads_other = pcb_slice.get_port_pads(other_pads, included_pads, excluded_pads, other_nets)
+            other_nets = {n.GetNetname(): n.GetNetClassName() for n in trs}
+            portpads_other = pcb_slice.get_port_pads(other_pads, included_pads, excluded_pads, list(other_nets.keys()))
 
-            sp_index_other, layer_flip_other = pcb_slice.place_simulation_port(portpads_other)
+            _ = pcb_slice.place_simulation_port(portpads_other)
+            for pp in portpads_other:
+                port_cfg.add_port_pad(pcb_slice, pp, other_nets[pp.net], False)
 
-        if des_net_2 != []:
+        if is_diff:
             if len(portpads1) == 2 and len(portpads2) == 2:
                 if portpads1[0].distance(portpads2[0]) > portpads1[0].distance(portpads2[1]):
                     # Ensure that excited ports of diff pair are next to each other (on the same trace side)
                     portpads1.reverse()
-                if (
-                    portpads1[0].opt_rating + portpads2[0].opt_rating
-                    > portpads1[1].opt_rating + portpads2[1].opt_rating
-                ):
-                    # Ensure that most optimally placed port is excited
-                    portpads1.reverse()
-                    portpads2.reverse()
-        elif len(portpads1) == 2 and portpads1[0].opt_rating > portpads1[1].opt_rating:
-            # Ensure that most optimally placed port is excited
-            portpads1.reverse()
 
-        sp_index_1, layer_flip_1 = pcb_slice.place_simulation_port(portpads1)
-        if des_net_2 != []:
-            sp_index_2, layer_flip_2 = pcb_slice.place_simulation_port(portpads2)
+        sp_index_1 = pcb_slice.place_simulation_port(portpads1)
+        if is_diff:
+            sp_index_2 = pcb_slice.place_simulation_port(portpads2)
 
         diff_index_list = []
-        if len(trs) > 0:
-            for pp in portpads_other:
-                port_cfg.add_port_pad(pcb_slice, pp, other_net_impedance, False)
 
         for pp in portpads1:
             port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
             diff_index_list.append(pp.idx - 1)
             excite[0] = False
 
-        if des_net_2 != []:
+        if is_diff:
             for pp in portpads2:
                 port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
                 diff_index_list.append(pp.idx - 1)
@@ -326,9 +276,7 @@ def main(
 
             for track in pcb_slice.board.GetTracks():
                 if track.GetNetname() == ppg[0].net:
-                    _, _, net_start_pos, net_end_pos, net_impedance, diff_impedance = pcb_slice.get_selected_track_info(
-                        [track]
-                    )
+                    net_impedance, diff_impedance = pcb_slice.get_netclass_impedance(track.GetNetClassName())
                     break
             port_cfg.add_differential_pair(check_diffs([p.idx - 1 for p in ppg]), nn, diff_impedance, None)
 
