@@ -90,7 +90,6 @@ def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_d
 
 
 def prepare_render() -> None:
-
     pcb_ortho_cfg = {
         "default": {
             "CAMERAS": {"TOP": True},
@@ -135,7 +134,6 @@ def prepare_render() -> None:
 
 
 def process_net(cfile: Path, debug: bool) -> None:
-
     # Plot net highlight overlay over render
     settings_path = str(cfile)
     settings = Settings(settings_path)

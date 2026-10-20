@@ -52,10 +52,8 @@ class SettingCreator:
         """Create new configuration file for single net."""
         if expn:
             board_offset = {"top": 6, "bottom": 6, "left": 6, "right": 6}
-            neighbouring_nets = {"offset": 3.0, "common_points": 1}
         else:
             board_offset = {"top": 1, "bottom": 1, "left": 1, "right": 1}
-            neighbouring_nets = {"offset": 0.1, "common_points": 100}
 
         data = {
             "designated_nets": nets,
@@ -63,11 +61,6 @@ class SettingCreator:
             "included_pads": [],
             "excluded_pads": [],
             "hidden_pads": {"designated_net": True, "other_nets": True},
-            "neighbouring_nets": {
-                **neighbouring_nets,
-                "in_use": True,
-                "netlist": [],
-            },
         }
 
         with open(f"{self.out_path}/{Settings.get_filesystem_name(nets)}.json", "w") as simulation_json:

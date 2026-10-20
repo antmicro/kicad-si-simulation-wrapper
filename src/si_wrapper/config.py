@@ -47,22 +47,6 @@ class Settings:
         """Get if other pads hidden."""
         return self.json_file["hidden_pads"]["other_nets"]
 
-    def get_neighbour_offset(self) -> float:
-        """Get neighbour offset."""
-        return float(self.json_file["neighbouring_nets"]["offset"])
-
-    def get_neighbour_common_points(self) -> int:
-        """Get neighbour comon points."""
-        return int(self.json_file["neighbouring_nets"]["common_points"])
-
-    def get_neighbour_list(self) -> list[str]:
-        """Get neighbour netlist."""
-        return self.json_file["neighbouring_nets"]["netlist"]
-
-    def get_neighbour_in_use(self) -> list[str]:
-        """Get if neighbours in use."""
-        return self.json_file["neighbouring_nets"]["in_use"]
-
     @staticmethod
     def get_filesystem_name(nets: list[str]) -> str:
         """Get normalized net name."""
@@ -140,19 +124,14 @@ class PortConfig:
             | Impedance: {impedance} \
             | SP{port.idx} | Layer: {layer}"
         )
-        self.add_simulation_port(port.idx, impedance, layer, excite)
+        self.add_simulation_port(port.idx, impedance, layer, excite, {})
 
-    def add_simulation_port(self, number: int, impedance: float, layer: int, excite: bool) -> None:
+    def add_simulation_port(
+        self, number: int, impedance: float, layer: int, excite: bool, extra: dict[str, str | int]
+    ) -> None:
         """Add simulation port to configuration file."""
         port_keyword = "ports"
-        port_pattern = [
-            {
-                "number": number,
-                "impedance": impedance,
-                "layer": layer,
-                "excite": excite,
-            },
-        ]
+        port_pattern = [{"number": number, "impedance": impedance, "layer": layer, "excite": excite, **extra}]
 
         self.load_save(port_keyword, port_pattern)
 

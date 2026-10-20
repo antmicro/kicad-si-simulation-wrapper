@@ -146,11 +146,6 @@ def main(
         dir_path, file_path = create_output_path(net_name)
         out_path = os.path.join(dir_path, file_path)
 
-        neighbour_offset = settings.get_neighbour_offset()
-        neighbour_cp = settings.get_neighbour_common_points()
-        neighbour_netlist = settings.get_neighbour_list()
-        neighbour_inuse = settings.get_neighbour_in_use()
-
         # Get designated track or tracks
         des_net_1, des_net_2 = pcb_slice.get_des_tracks()
 
@@ -179,12 +174,6 @@ def main(
         portpads1 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[0])
         if is_diff:
             portpads2 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[1])
-
-        if neighbour_inuse:
-            logger.info("Looking for neighbouring tracks...")
-            pcb_slice.find_nearest_to_designated_net(
-                net_start_pos, net_end_pos, neighbour_offset, neighbour_cp, neighbour_netlist
-            )
 
         logger.info("Terminating Tracks...")
         pad_pos = pcb_slice.get_des_pads_points()
@@ -218,8 +207,16 @@ def main(
                 | SP{i + 1} | Layer: {sp_termination_layer}"
             )
             port_cfg.add_simulation_port(
-                i + 1, net_width_3 / 1000, 250, net_impedance_3, sp_termination_layer, plane, False
-            )  # TODO
+                i + 1,
+                net_impedance_3,
+                sp_termination_layer,
+                False,
+                extra={
+                    "type": "lumped",
+                    "width": net_width_3 / 1000,
+                    "plane": plane,
+                },
+            )
 
         # Get information about other nets for placing simulation ports
         trs = pcb_slice.get_all_tracks()

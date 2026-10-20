@@ -1,12 +1,13 @@
 """Library file containing class for generating and editing netslices."""
 
 from __future__ import annotations
+from copy import deepcopy
 
 import logging
 import re
 import sys
 from typing import Any, List, Set, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import pcbnew
 from math import inf
@@ -30,6 +31,68 @@ class Point:
     def rotation(self, rhs: Point) -> float:
         """Get orientation of vector connecting two points."""
         return np.arctan2((rhs.x - self.x), (rhs.y - self.y)) * (180.0 / np.pi) - 180.0
+
+
+@dataclass
+class BBox:
+    """Point defining Bounding box in 2D space."""
+
+    min: Point = field(default_factory=lambda: Point(inf, inf))
+    max: Point = field(default_factory=lambda: Point(-inf, -inf))
+
+    def add_point(self, point: Point) -> None:
+        """Expand BBox to encompass `point`."""
+        self.min.x = min(point.x, self.min.x)
+        self.min.y = min(point.y, self.min.y)
+        self.max.x = max(point.x, self.max.x)
+        self.max.y = max(point.y, self.max.y)
+
+    def in_bbox(self, point: Point) -> bool:
+        return self.min.x <= point.x <= self.max.x and self.min.x <= point.x <= self.max.x
+
+    def clip_segment(self, seg: tuple[Point, Point]) -> tuple[Point, Point] | None:
+        """
+        Clip segment  `seg` to an axis-aligned bounding box.
+
+        Args:
+            seg: (Point(x0, y0), Point(x1, y1)) segment to clip
+            bbox: (xmin, ymin, xmax, ymax)
+
+        Returns:
+            (Point(x0, y0), Point(x1, y1)) for the clipped segment,
+            or None if entirely outside.
+        """
+
+        dx = seg[1].x - seg[0].x
+        dy = seg[1].y - seg[0].y
+
+        t_min, t_max = 0.0, 1.0
+
+        for p, q in [
+            (-dx, seg[0].x - self.min.x),
+            (dx, self.max.x - seg[0].x),
+            (-dy, seg[0].y - self.min.y),
+            (dy, self.max.y - seg[0].y),
+        ]:
+            if p == 0:
+                if q < 0:
+                    return None
+                continue
+
+            r = q / p
+
+            if p < 0:
+                t_min = max(t_min, r)
+            else:
+                t_max = min(t_max, r)
+
+            if t_min > t_max:
+                return None
+
+        start = Point(seg[0].x + t_min * dx, seg[0].y + t_min * dy)
+        end = Point(seg[0].x + t_max * dx, seg[0].y + t_max * dy)
+
+        return start, end
 
 
 @dataclass
@@ -218,8 +281,9 @@ class PCBSlice:
                     pads.append(pad)
         return pads
 
-    def resize_zones(self, edges: list) -> None:
+    def resize_zones(self, bbox: BBox) -> None:
         """Fit sizes of the zones to size of new PCB."""
+        edges = (bbox.max.x, bbox.min.x, bbox.max.y, bbox.min.y)
         [max_edge_x, min_edge_x, max_edge_y, min_edge_y] = [pcbnew.FromMM(float(e)) for e in edges]
 
         zones = self.board.Zones()
@@ -239,7 +303,6 @@ class PCBSlice:
             polys.COutline(poly_idx).SetPoint(corner_idx, pcbnew.VECTOR2I(point_x, point_y))
 
         for zone in zones:
-            zone.SetNet(self.GNDnet)
             polys = zone.Outline()
             for poly_idx in range(polys.OutlineCount()):
                 for corner_idx in range(polys.COutline(poly_idx).PointCount()):
@@ -265,78 +328,23 @@ class PCBSlice:
         for zone in to_remove:
             self.board.Remove(zone)
 
-    def to_gnd(self, track: pcbnew.PCB_TRACK) -> None:
-        """Set netclass of net to GND."""
-        if re.search(self.ci_dict(), str(track.GetNetClassName())) is None:
-            track.SetNet(self.GNDnet)
-
-    @staticmethod
-    def clip_segment_to_bbox(
-        seg: tuple[Point, Point], bbox: tuple[float, float, float, float]
-    ) -> tuple[Point, Point] | None:
-        """
-        Clip segment  `seg` to an axis-aligned bounding box.
-
-        Args:
-            seg: (Point(x0, y0), Point(x1, y1)) segment to clip
-            bbox: (xmin, ymin, xmax, ymax)
-
-        Returns:
-            (Point(x0, y0), Point(x1, y1)) for the clipped segment,
-            or None if entirely outside.
-        """
-        xmin, ymin, xmax, ymax = bbox
-
-        dx = seg[1].x - seg[0].x
-        dy = seg[1].y - seg[0].y
-
-        t_min, t_max = 0.0, 1.0
-
-        for p, q in [
-            (-dx, seg[0].x - xmin),
-            (dx, xmax - seg[0].x),
-            (-dy, seg[0].y - ymin),
-            (dy, ymax - seg[0].y),
-        ]:
-            if p == 0:
-                if q < 0:
-                    return None
-                continue
-
-            r = q / p
-
-            if p < 0:
-                t_min = max(t_min, r)
-            else:
-                t_max = min(t_max, r)
-
-            if t_min > t_max:
-                return None
-
-        start = Point(seg[0].x + t_min * dx, seg[0].y + t_min * dy)
-        end = Point(seg[0].x + t_max * dx, seg[0].y + t_max * dy)
-
-        return start, end
-
-    def cut_tracks(self, edges: list) -> list:
+    def cut_tracks(self, bbox: BBox) -> list:
         """Remove tracks existing out of the EdgeCuts layer."""
         sp_tracks = []
 
         for track in self.board.GetTracks():
-            self.to_gnd(track)
-
             start, end = Point(*pcbnew.ToMM(track.GetStart())), Point(*pcbnew.ToMM(track.GetEnd()))
 
             width = track.GetFrontWidth() if isinstance(track, pcbnew.PCB_VIA) else track.GetWidth()
             track_radius = pcbnew.ToMM(width) / 2
-            [xmax, xmin, ymax, ymin] = edges
+            shrink_bbox = deepcopy(bbox)
 
-            xmax -= track_radius
-            ymax -= track_radius
-            xmin += track_radius
-            ymin += track_radius
+            shrink_bbox.max.x -= track_radius
+            shrink_bbox.max.y -= track_radius
+            shrink_bbox.min.x += track_radius
+            shrink_bbox.min.y += track_radius
 
-            clipped_trace = PCBSlice.clip_segment_to_bbox((start, end), (xmin, ymin, xmax, ymax))
+            clipped_trace = shrink_bbox.clip_segment((start, end))
 
             if not clipped_trace:
                 self.board.Delete(track)
@@ -346,45 +354,40 @@ class PCBSlice:
             track.SetStart(pcbnew.VECTOR2I_MM(float(new_start.x), float(new_start.y)))
             track.SetEnd(pcbnew.VECTOR2I_MM(float(new_end.x), float(new_end.y)))
             if new_start != start:
-                if self.terminate_track(start.x, start.y, track.GetWidth(), track) == 0:
+                if self.terminate_track(new_start.x, new_start.y, track.GetWidth(), track) == 0:
                     sp_tracks.append(track)
             if new_end != end:
-                if self.terminate_track(end.x, end.y, track.GetWidth(), track) == 0:
+                if self.terminate_track(new_end.x, new_end.y, track.GetWidth(), track) == 0:
                     sp_tracks.append(track)
 
         return sp_tracks
 
-    def remove_footprints(self, edges: list) -> list:
+    def remove_pad_footprints(self, bbox: BBox) -> BBox:
         """Change size of the board to edge nearest footprints and remove those out of the range of the board."""
         to_remove = []
-        new_edges = edges
+        new_bbox = deepcopy(bbox)
 
-        # Removing footprints v1 #
+        # Note: These are not original footprints, these are processed footprint-per-pad
         for footprint in self.board.GetFootprints():
+            padbbox = footprint.GetFpPadsLocalBbox()
             [footprint_x, footprint_y] = pcbnew.ToMM(footprint.GetPosition())
-            if footprint_x > edges[0] or footprint_x < edges[1] or footprint_y > edges[2] or footprint_y < edges[3]:
+            c1 = Point(pcbnew.ToMM(padbbox.GetLeft()) + footprint_x, pcbnew.ToMM(padbbox.GetTop()) + footprint_y)
+            c2 = Point(pcbnew.ToMM(padbbox.GetRight()) + footprint_x, pcbnew.ToMM(padbbox.GetBottom()) + footprint_y)
+            c3, c4 = Point(c1.x, c2.y), Point(c2.x, c1.y)
+            pad_corners = (c1, c2, c3, c4)
+
+            if not any(bbox.in_bbox(c) for c in pad_corners):
+                # Pad is completely outside of new outline
                 to_remove.append(footprint)
+
+            # pads that are partially inside new outline should extend it
+            for c in pad_corners:
+                new_bbox.add_point(c)
 
         for item in to_remove:
             self.board.Delete(item)
 
-        for footprint in self.board.GetFootprints():
-            bbox = footprint.GetFpPadsLocalBbox()
-            start_x = pcbnew.ToMM(bbox.GetLeft())
-            start_y = pcbnew.ToMM(bbox.GetTop())
-            end_x = pcbnew.ToMM(bbox.GetRight())
-            end_y = pcbnew.ToMM(bbox.GetBottom())
-            # Set footprints to remove #
-            if start_x <= edges[1] and end_x >= edges[1]:
-                new_edges[1] = start_x - 0.2
-            if start_x <= edges[0] and end_x >= edges[0]:
-                new_edges[0] = end_x + 0.2
-            if start_y <= edges[3] and end_y >= edges[3]:
-                new_edges[3] = start_y - 0.2
-            if start_y <= edges[2] and end_y >= edges[2]:
-                new_edges[2] = end_y + 0.2
-
-        return list(new_edges)
+        return new_bbox
 
     def footprint_to_pad(self) -> None:
         """Split every footprint into separate pad, then turn pad into footprint."""
@@ -394,8 +397,6 @@ class PCBSlice:
                 virt_footprint = pcbnew.FOOTPRINT(self.board)
                 new_pad = pcbnew.PAD(pad)
                 new_pad.SetPos(pcbnew.VECTOR2I(0, 0))  # Set pad position to origin of the footprint
-                if re.search(self.ci_dict(), str(pad.GetNetClassName())) is None:
-                    new_pad.SetNet(self.GNDnet)
                 virt_footprint.Add(new_pad)
                 virt_footprint.SetReference(f"{footprint.GetReference()}")
                 virt_footprint.Reference().SetVisible(False)  # Hide reference text
@@ -414,42 +415,22 @@ class PCBSlice:
         """Create shape for Sliced PCB."""
         points = np.vstack([track_pos[0], track_pos[1], np.array(track_pos[2], dtype=float).reshape(-1, 2)])
 
-        max_track_x: Any = None
-        min_track_x: Any = None
-        max_track_y: Any = None
-        min_track_y: Any = None
+        bbox = BBox()
 
         # Find max coordinates of track
         for x, y in points:
-            if max_track_x is None or x > max_track_x:
-                max_track_x = x
-            if min_track_x is None or x < min_track_x:
-                min_track_x = x
-            if max_track_y is None or y > max_track_y:
-                max_track_y = y
-            if min_track_y is None or y < min_track_y:
-                min_track_y = y
+            bbox.add_point(Point(float(x), float(y)))
 
-        max_track_x = max_track_x + offset[0]
-        min_track_x = min_track_x - offset[1]
-        max_track_y = max_track_y + offset[2]
-        min_track_y = min_track_y - offset[3]
+        bbox.max.x += offset[0]
+        bbox.min.x -= offset[1]
+        bbox.max.y += offset[2]
+        bbox.min.y -= offset[3]
         edge_bbox = self.board.GetBoardEdgesBoundingBox()
-        edges_org = [
-            pcbnew.ToMM(edge_bbox.GetRight()),
-            pcbnew.ToMM(edge_bbox.GetLeft()),
-            pcbnew.ToMM(edge_bbox.GetBottom()),
-            pcbnew.ToMM(edge_bbox.GetTop()),
-        ]
-
-        edges = [max_track_x, min_track_x, max_track_y, min_track_y]
-        func = [min, max, min, max]
-        edges = [f(a, b) for f, a, b in zip(func, edges_org, edges, strict=True)]
 
         self.footprint_to_pad()
-        new_edges = self.remove_footprints(edges)
+        new_edges = self.remove_pad_footprints(bbox)
 
-        sp_track_termination = self.cut_tracks(new_edges)
+        sp_track_termination = self.cut_tracks(bbox)
         self.resize_zones(new_edges)
 
         mask_layers = [pcbnew.F_Mask, pcbnew.B_Mask]
@@ -459,15 +440,17 @@ class PCBSlice:
             if drawing.GetLayer() not in mask_layers:
                 self.board.Delete(drawing)
 
-        ec = [float(f(a, b)) for f, a, b in zip(func, edges_org, new_edges, strict=True)]
-        edge_corners = [[ec[1], ec[3]], [ec[0], ec[2]]]
+        bbox.max.x = min(bbox.max.x, pcbnew.ToMM(edge_bbox.GetRight()))
+        bbox.min.x = max(bbox.min.x, pcbnew.ToMM(edge_bbox.GetLeft()))
+        bbox.max.y = min(bbox.max.x, pcbnew.ToMM(edge_bbox.GetBottom()))
+        bbox.min.y = max(bbox.min.x, pcbnew.ToMM(edge_bbox.GetTop()))
 
         segment = pcbnew.PCB_SHAPE(self.board)
         self.board.Add(segment)
         segment.SetShape(pcbnew.S_RECT)
         segment.SetLayer(pcbnew.Edge_Cuts)
-        segment.SetStart(pcbnew.VECTOR2I_MM(edge_corners[0][0], edge_corners[0][1]))
-        segment.SetEnd(pcbnew.VECTOR2I_MM(edge_corners[1][0], edge_corners[1][1]))
+        segment.SetStart(pcbnew.VECTOR2I_MM(bbox.min.x, bbox.min.y))
+        segment.SetEnd(pcbnew.VECTOR2I_MM(bbox.max.x, bbox.max.y))
 
         # Remove mask layers out of EdgeCuts
         for drawing in self.board.GetDrawings():
@@ -478,10 +461,7 @@ class PCBSlice:
         temporary_aux_offset = 0.025
 
         self.board.GetDesignSettings().SetAuxOrigin(
-            pcbnew.VECTOR2I_MM(
-                edge_corners[0][0] - temporary_aux_offset,
-                edge_corners[1][1] + temporary_aux_offset,
-            )
+            pcbnew.VECTOR2I_MM(bbox.min.x - temporary_aux_offset, bbox.max.y + temporary_aux_offset)
         )
 
         return sp_track_termination
@@ -591,9 +571,9 @@ class PCBSlice:
 
     def terminate_track(self, x: float, y: float, width_t: float, track: pcbnew.PCB_TRACK) -> int:
         """Terminate track with SP or GND via."""
-        if re.search(self.ci_dict(), str(track.GetNetClassName())):
-            self.place_sim_port_fp(x, y)
-            return 0
+        # if re.search(self.ci_dict(), str(track.GetNetClassName())):
+        #     self.place_sim_port_fp(float(x), float(y))
+        #     return 0
 
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
@@ -629,124 +609,6 @@ class PCBSlice:
         if layer_name == "F.Cu":
             return 0, layer_count
         return int((self.board.GetLayerID(layer_name) - 2) / 2), layer_count
-
-    def find_nearest_to_designated_net(
-        self,
-        start_pos: list,
-        end_pos: list,
-        net_offset: float,
-        number_of_common_points: int,
-        protected_list: list,
-    ) -> None:
-        """Find nearest nets to designated one basing on provided information.
-
-        There is a possibility to define area of existing propable neighbour or even
-        possibility to define name if it in the config file
-        """
-        offset = net_offset
-        common_points_number = number_of_common_points
-        protected_nets = protected_list
-
-        tracks = [track for track in self.board.GetTracks() if (track.GetNetname() not in self.netname)]
-
-        num_of = 0
-        i = 0
-
-        names = []
-
-        if len(protected_list) > 0:
-            for net in protected_nets:
-                names.append(net)
-
-        my_dict: dict[str, float] = {}
-
-        max_value = None
-        min_value_x = None
-        min_value_y = None
-        oldname: str = ""
-
-        for track in tracks:
-            track_name = track.GetNetname()
-            for n in range(0, len(start_pos)):
-                orient = self.calculate_orientation(start_pos[n], end_pos[n])
-                xs = start_pos[n][0]
-                ys = start_pos[n][1]
-                xe = end_pos[n][0]
-                ye = end_pos[n][1]
-
-                match orient:
-                    case 0 | -180:
-                        rule = (
-                            (xs - offset < pcbnew.ToMM(track.GetEnd()[0]) < xs + offset)
-                            or (xs - offset < pcbnew.ToMM(track.GetStart()[0]) < xs + offset)
-                        ) and (
-                            (ys < pcbnew.ToMM(track.GetEnd()[1]) < ye)
-                            or (ys < pcbnew.ToMM(track.GetStart()[1]) < ye)
-                            or (ye < pcbnew.ToMM(track.GetEnd()[1]) < ys)
-                            or (ye < pcbnew.ToMM(track.GetStart()[1]) < ys)
-                        )
-
-                        if np.abs(xs - pcbnew.ToMM(track.GetStart()[0])) < np.abs(xs - pcbnew.ToMM(track.GetEnd()[0])):
-                            diff_x = np.abs(xs - pcbnew.ToMM(track.GetStart()[0]))
-                        else:
-                            diff_x = np.abs(xs - pcbnew.ToMM(track.GetEnd()[0]))
-                        diff_y = 255
-
-                    case -90 | -270:
-                        rule = (
-                            (ys - offset < pcbnew.ToMM(track.GetEnd()[1]) < ys + offset)
-                            or (ys - offset < pcbnew.ToMM(track.GetStart()[1]) < ys + offset)
-                        ) and (
-                            (xs < pcbnew.ToMM(track.GetEnd()[0]) < xe)
-                            or (xs < pcbnew.ToMM(track.GetStart()[0]) < xe)
-                            or (xe < pcbnew.ToMM(track.GetEnd()[0]) < xs)
-                            or (xe < pcbnew.ToMM(track.GetStart()[0]) < xs)
-                        )
-
-                        if np.abs(ys - pcbnew.ToMM(track.GetStart()[1])) < np.abs(ys - pcbnew.ToMM(track.GetEnd()[1])):
-                            diff_y = np.abs(ys - pcbnew.ToMM(track.GetStart()[1]))
-                        else:
-                            diff_y = np.abs(ys - pcbnew.ToMM(track.GetEnd()[1]))
-                        diff_x = 255
-
-                    case _:
-                        rule = None
-
-                if rule:
-                    if oldname == track_name:
-                        num_of += 1
-                        if min_value_x is None or diff_x < min_value_x:
-                            min_value_x = diff_x
-                        if min_value_y is None or diff_y < min_value_y:
-                            min_value_y = diff_y
-                        if max_value is None or num_of > max_value:
-                            max_value = num_of
-
-                if oldname is not track_name and max_value is not None:
-                    my_dict[oldname] = max_value
-                    num_of = 0
-                    max_value = None
-
-            oldname = track.GetNetname()
-
-        for i in range(len(my_dict)):
-            # print(list(my_dict.values())[i], list(my_dict.keys())[i])
-            if list(my_dict.values())[i] >= common_points_number:
-                names.append(list(my_dict.keys())[i])
-
-        for track in tracks:
-            if track.GetNetname() not in names and track.GetNetname() != "GND":
-                self.board.Delete(track)
-
-    def remove_pads(self, condition: list) -> None:
-        """Remove pads from board."""
-        for footprint in self.board.GetFootprints():
-            for pad in footprint.Pads():
-                if condition is None:
-                    self.board.Remove(footprint)
-                else:
-                    if pad.GetNetname() not in condition and pad.GetNetname() not in self.netname:
-                        self.board.Remove(footprint)
 
     def renumerate_simulation_ports(self) -> list[int]:
         """Renumerate ports that were changed on the board."""
@@ -810,12 +672,6 @@ class PCBSlice:
         # Remove elements from list
         for element in to_remove:
             self.board.Delete(element)
-
-    def edit_netclass_clearance(self, clearance_value: float) -> None:
-        """Change netclass clearance min value."""
-        netclasses = self.board.GetAllNetClasses().items()
-        for _, netclass in netclasses:
-            netclass.SetClearance(pcbnew.FromMM(clearance_value))
 
 
 def netclass_list(path: str) -> None:
