@@ -370,7 +370,7 @@ class PCBSlice:
         to_remove2 = []
         new_bbox = deepcopy(bbox)
 
-        def pad_corners(fp) -> tuple[Point, Point, Point, Point]:
+        def pad_corners(fp: pcbnew.FOOTPRINT) -> tuple[Point, Point, Point, Point]:
             padbbox = fp.GetFpPadsLocalBbox()
             [footprint_x, footprint_y] = pcbnew.ToMM(fp.GetPosition())
             c1 = Point(pcbnew.ToMM(padbbox.GetLeft()) + footprint_x, pcbnew.ToMM(padbbox.GetTop()) + footprint_y)

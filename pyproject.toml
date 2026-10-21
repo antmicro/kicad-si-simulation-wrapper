@@ -16,8 +16,12 @@ dependencies = [
 [project.scripts]
 si-wrapper= "si_wrapper.main:app"
 
-[project.optional-dependencies]
-dev = ["mypy", "ruff", "black"]
+[dependency-groups]
+code_check = [
+    "mypy==2.1.0",
+    "ruff==0.17.1",
+]
+
 
 [tool.setuptools]
 package-dir = { "si_wrapper" = "src/si_wrapper" }
@@ -35,9 +39,6 @@ exclude = [
 	"docs",
 	"src/si_wrapper/__init__.py",
 ]
-
-[tool.black]
-line-length = 120
 
 [tool.mypy]
 ignore_missing_imports = true

@@ -1,7 +1,6 @@
 include:
   - antmicro-pcb-release-ci-template@main:.docs.yml
   - gerber2ems-ci@main:.ci.yml
-  - gerber2ems-ci@main:.verification.yml
 
 stages:
   - code-checks
@@ -41,13 +40,30 @@ test:
       - sodimm-ddr5-tester
       - logs
 
-simulate_examples:
-  when: never
-  stage: test
-
-tuttest:
-  when: never
-  stage: test
-  
 build-docs:
   stage: docs
+
+############ Code Checks #############
+
+.code-check-base:
+  stage: code-checks
+  image: "astral/uv:python3.13-trixie-slim"
+  extends: .low_resources
+  before_script:
+    - uv venv
+    - uv sync --group code_check
+
+mypy:
+  extends: .code-check-base
+  script:
+    - uv run mypy ./src
+
+format:
+  extends: .code-check-base
+  script:
+    - uv run ruff format --check ./src
+
+lint:
+  extends: .code-check-base
+  script:
+    - uv run ruff check ./src
