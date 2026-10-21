@@ -17,9 +17,14 @@ dependencies = [
 si-wrapper= "si_wrapper.main:app"
 
 [dependency-groups]
-code_check = [
+dev = [
     "mypy==2.1.0",
     "ruff==0.17.1",
+]
+docs = [
+    "sphinx==8.2.3",
+    "antmicro-sphinx-utils @ https://github.com/antmicro/antmicro-sphinx-utils/archive/main.zip",
+    "sphinx-inline-tabs"
 ]
 
 

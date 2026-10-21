@@ -51,7 +51,7 @@ build-docs:
   extends: .low_resources
   before_script:
     - uv venv
-    - uv sync --group code_check
+    - uv sync --group dev
 
 mypy:
   extends: .code-check-base

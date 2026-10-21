@@ -1,2 +1,0 @@
-https://github.com/antmicro/antmicro-sphinx-utils/archive/main.zip
-sphinx-inline-tabs
