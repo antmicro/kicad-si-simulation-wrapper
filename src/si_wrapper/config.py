@@ -124,7 +124,7 @@ class PortConfig:
             | Impedance: {impedance} \
             | SP{port.idx} | Layer: {layer}"
         )
-        self.add_simulation_port(port.idx, impedance, layer, excite, {})
+        self.add_simulation_port(port.idx, impedance, layer, excite, {"type": "vertical"})
 
     def add_simulation_port(
         self, number: int, impedance: float, layer: int, excite: bool, extra: dict[str, str | int]
