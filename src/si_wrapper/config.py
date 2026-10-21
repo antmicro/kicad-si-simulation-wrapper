@@ -116,7 +116,7 @@ class PortConfig:
         with open(self.path, "w") as write_data:
             json.dump(edit_data, write_data, indent=2)
 
-    def add_port_pad(self, pcb_slice: PCBSlice, port: PortPad, impedance: int, excite: bool) -> None:
+    def add_port_pad(self, pcb_slice: PCBSlice, port: PortPad, impedance: float, excite: bool) -> None:
         """Add simulation port to configuration file."""
         layer, _ = pcb_slice.get_num_layers("B.Cu") if port.flipped is True else pcb_slice.get_num_layers("F.Cu")
         logger.debug(

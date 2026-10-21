@@ -48,7 +48,7 @@ class BBox:
         self.max.y = max(point.y, self.max.y)
 
     def in_bbox(self, point: Point) -> bool:
-        return self.min.x <= point.x <= self.max.x and self.min.x <= point.x <= self.max.x
+        return self.min.x <= point.x <= self.max.x and self.min.y <= point.y <= self.max.y
 
     def clip_segment(self, seg: tuple[Point, Point]) -> tuple[Point, Point] | None:
         """
@@ -94,6 +94,9 @@ class BBox:
 
         return start, end
 
+    def extend_by(self, d: float) -> BBox:
+        return BBox(Point(self.min.x - d, self.min.y - d), Point(self.max.x + d, self.max.y + d))
+
 
 @dataclass
 class PortPad:
@@ -129,6 +132,11 @@ class PCBSlice:
         self.board = pcbnew.LoadBoard(board_pth)
         self.netname = netname
         self.GNDnet = self.board.GetNetsByName().find("GND").value()[1]
+        # self.copper_layers = [
+        #     layer for layer in range(pcbnew.F_Cu, pcbnew.B_Cu + 1)
+        #     if self.board.IsLayerEnabled(layer)
+        #     and pcbnew.LSET.AllCuMask().Contains(layer)
+        # ]
 
         fp_name = const.FP_NAME
         self.static_sp_index = 1
@@ -337,14 +345,8 @@ class PCBSlice:
 
             width = track.GetFrontWidth() if isinstance(track, pcbnew.PCB_VIA) else track.GetWidth()
             track_radius = pcbnew.ToMM(width) / 2
-            shrink_bbox = deepcopy(bbox)
 
-            shrink_bbox.max.x -= track_radius
-            shrink_bbox.max.y -= track_radius
-            shrink_bbox.min.x += track_radius
-            shrink_bbox.min.y += track_radius
-
-            clipped_trace = shrink_bbox.clip_segment((start, end))
+            clipped_trace = bbox.extend_by(-track_radius).clip_segment((start, end))
 
             if not clipped_trace:
                 self.board.Delete(track)
@@ -365,26 +367,38 @@ class PCBSlice:
     def remove_pad_footprints(self, bbox: BBox) -> BBox:
         """Change size of the board to edge nearest footprints and remove those out of the range of the board."""
         to_remove = []
+        to_remove2 = []
         new_bbox = deepcopy(bbox)
 
-        # Note: These are not original footprints, these are processed footprint-per-pad
-        for footprint in self.board.GetFootprints():
-            padbbox = footprint.GetFpPadsLocalBbox()
-            [footprint_x, footprint_y] = pcbnew.ToMM(footprint.GetPosition())
+        def pad_corners(fp) -> tuple[Point, Point, Point, Point]:
+            padbbox = fp.GetFpPadsLocalBbox()
+            [footprint_x, footprint_y] = pcbnew.ToMM(fp.GetPosition())
             c1 = Point(pcbnew.ToMM(padbbox.GetLeft()) + footprint_x, pcbnew.ToMM(padbbox.GetTop()) + footprint_y)
             c2 = Point(pcbnew.ToMM(padbbox.GetRight()) + footprint_x, pcbnew.ToMM(padbbox.GetBottom()) + footprint_y)
             c3, c4 = Point(c1.x, c2.y), Point(c2.x, c1.y)
-            pad_corners = (c1, c2, c3, c4)
+            return (c1, c2, c3, c4)
 
-            if not any(bbox.in_bbox(c) for c in pad_corners):
+        # Note: These are not original footprints, these are processed footprint-per-pad
+        for footprint in self.board.GetFootprints():
+            corners = pad_corners(footprint)
+            if not any(bbox.in_bbox(c) for c in corners):
                 # Pad is completely outside of new outline
                 to_remove.append(footprint)
+                continue
 
             # pads that are partially inside new outline should extend it
-            for c in pad_corners:
+            for c in corners:
                 new_bbox.add_point(c)
 
-        for item in to_remove:
+        exp_bbox = new_bbox.extend_by(0.3)
+        for footprint in to_remove:
+            corners = pad_corners(footprint)
+            if not all(exp_bbox.in_bbox(c) for c in corners):
+                # Pad is completely inside of updated outline, so there is no need to remove it
+                to_remove2.append(footprint)
+                continue
+
+        for item in to_remove2:
             self.board.Delete(item)
 
         return new_bbox
@@ -411,9 +425,8 @@ class PCBSlice:
         for fp in pads_as_fp:
             self.board.Add(fp)
 
-    def create_edge_cuts(self, track_pos: list, offset: list[float]) -> list:
+    def create_edge_cuts(self, points: list[tuple[float, float]], offset: list[float]) -> list:
         """Create shape for Sliced PCB."""
-        points = np.vstack([track_pos[0], track_pos[1], np.array(track_pos[2], dtype=float).reshape(-1, 2)])
 
         bbox = BBox()
 
@@ -428,10 +441,10 @@ class PCBSlice:
         edge_bbox = self.board.GetBoardEdgesBoundingBox()
 
         self.footprint_to_pad()
-        new_edges = self.remove_pad_footprints(bbox)
+        bbox = self.remove_pad_footprints(bbox)
 
         sp_track_termination = self.cut_tracks(bbox)
-        self.resize_zones(new_edges)
+        self.resize_zones(bbox)
 
         mask_layers = [pcbnew.F_Mask, pcbnew.B_Mask]
 
@@ -442,8 +455,8 @@ class PCBSlice:
 
         bbox.max.x = min(bbox.max.x, pcbnew.ToMM(edge_bbox.GetRight()))
         bbox.min.x = max(bbox.min.x, pcbnew.ToMM(edge_bbox.GetLeft()))
-        bbox.max.y = min(bbox.max.x, pcbnew.ToMM(edge_bbox.GetBottom()))
-        bbox.min.y = max(bbox.min.x, pcbnew.ToMM(edge_bbox.GetTop()))
+        bbox.max.y = min(bbox.max.y, pcbnew.ToMM(edge_bbox.GetBottom()))
+        bbox.min.y = max(bbox.min.y, pcbnew.ToMM(edge_bbox.GetTop()))
 
         segment = pcbnew.PCB_SHAPE(self.board)
         self.board.Add(segment)
@@ -571,9 +584,9 @@ class PCBSlice:
 
     def terminate_track(self, x: float, y: float, width_t: float, track: pcbnew.PCB_TRACK) -> int:
         """Terminate track with SP or GND via."""
-        # if re.search(self.ci_dict(), str(track.GetNetClassName())):
-        #     self.place_sim_port_fp(float(x), float(y))
-        #     return 0
+        if re.search(self.ci_dict(), str(track.GetNetClassName())):
+            self.place_sim_port_fp(float(x), float(y))
+            return 0
 
         new_via = pcbnew.PCB_VIA(self.board)
         new_via.SetDrill(50000)  # 0.05 mm
@@ -581,6 +594,10 @@ class PCBSlice:
         new_via.SetFrontWidth(width_t)
         new_via.SetNet(self.GNDnet)
         new_via.SetPosition(pcbnew.VECTOR2I_MM(float(x), float(y)))
+        layer, lcopp_num = self.get_num_layers(track.GetLayerName())
+        start_layer = max(layer - 1, 0)
+        end_layer = min(layer + 1, lcopp_num - 1)
+        new_via.SetLayerPair(self.get_kicad_layer_number(start_layer), self.get_kicad_layer_number(end_layer))
         self.board.Add(new_via)
         return 1
 
@@ -609,6 +626,14 @@ class PCBSlice:
         if layer_name == "F.Cu":
             return 0, layer_count
         return int((self.board.GetLayerID(layer_name) - 2) / 2), layer_count
+
+    def get_kicad_layer_number(self, layer: int) -> int:
+        """Get layer number used by KiCad."""
+        if layer == 0:
+            return 0
+        if layer + 1 == self.board.GetCopperLayerCount():
+            return 2
+        return layer * 2 + 2
 
     def renumerate_simulation_ports(self) -> list[int]:
         """Renumerate ports that were changed on the board."""

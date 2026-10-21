@@ -177,7 +177,7 @@ def main(
 
         logger.info("Terminating Tracks...")
         pad_pos = pcb_slice.get_des_pads_points()
-        terminate_tracks = pcb_slice.create_edge_cuts([net_start_pos, net_end_pos, pad_pos], offset)
+        terminate_tracks = pcb_slice.create_edge_cuts(net_start_pos + net_end_pos + pad_pos, offset)
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
@@ -227,7 +227,7 @@ def main(
 
             _ = pcb_slice.place_simulation_port(portpads_other)
             for pp in portpads_other:
-                port_cfg.add_port_pad(pcb_slice, pp, other_nets[pp.net], False)
+                port_cfg.add_port_pad(pcb_slice, pp, PCBSlice.get_netclass_impedance(other_nets[pp.net])[0], False)
 
         if is_diff:
             if len(portpads1) == 2 and len(portpads2) == 2:
