@@ -156,7 +156,7 @@ def main(
 
         is_diff = des_net_2 != []
         if is_diff:
-            net_length_2, net_width_2, net_start_pos_2, net_end_pos_2, net_impedance_2, _ = (
+            net_length_2, net_width_2, net_start_pos_2, net_end_pos_2, net_impedance_2, _, _ = (
                 pcb_slice.get_selected_track_info(des_net_2)
             )
             logger.info("Differential tracks recognized")
@@ -199,7 +199,7 @@ def main(
             else:
                 plane = sp_termination_layer - 1
 
-            net_length_3, net_width_3, _, _, net_impedance_3, _ = pcb_slice.get_selected_track_info(whole_track)
+            net_length_3, net_width_3, _, _, net_impedance_3, _, _ = pcb_slice.get_selected_track_info(whole_track)
             logger.debug(
                 f"Nets params: Length: {net_length_3} \
                 | Width: {net_width_3} \
