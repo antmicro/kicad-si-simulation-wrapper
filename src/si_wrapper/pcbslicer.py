@@ -132,12 +132,6 @@ class PCBSlice:
         self.board = pcbnew.LoadBoard(board_pth)
         self.netname = netname
         self.GNDnet = self.board.GetNetsByName().find("GND").value()[1]
-        # self.copper_layers = [
-        #     layer for layer in range(pcbnew.F_Cu, pcbnew.B_Cu + 1)
-        #     if self.board.IsLayerEnabled(layer)
-        #     and pcbnew.LSET.AllCuMask().Contains(layer)
-        # ]
-
         fp_name = const.FP_NAME
         self.static_sp_index = 1
         self.SimPortFootprint = pcbnew.FootprintLoad(const.FP_LIB_PATH, fp_name)
