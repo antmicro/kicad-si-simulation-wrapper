@@ -213,6 +213,7 @@ def main(
 
         logger.info("Terminating Tracks...")
         pad_pos = pcb_slice.get_des_pads_points()
+        sp_lumped_start = pcb_slice.static_sp_index
         terminate_tracks = pcb_slice.create_edge_cuts(net_start_pos + net_end_pos + pad_pos, offset)
 
         # Set and save simulation port terminators
@@ -229,10 +230,10 @@ def main(
                 f"Nets params: Length: {net_length_3} \
                 | Width: {net_width_3} \
                 | Impedance: {net_impedance_3} \
-                | SP{i + 1} | Layer: {sp_termination_layer}"
+                | SP{i + sp_lumped_start} | Layer: {sp_termination_layer}"
             )
             port_cfg.add_simulation_port(
-                i + 1,
+                i + sp_lumped_start,
                 net_impedance_3,
                 sp_termination_layer,
                 False,
