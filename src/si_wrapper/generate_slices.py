@@ -78,17 +78,16 @@ def get_ports_placement_info(first_net_ports: list, second_net_ports: list, is_d
     first_net_info = ""
     second_net_info = ""
 
-    if len(first_net_ports) > 0:
-        if len(first_net_ports) > 2:
-            first_net_info = (
-                f"Too many ( {len(first_net_ports)} ) Simulation Ports on first net. Check it and fix if needed."
-            )
-        elif len(first_net_ports) < 2:
-            first_net_info = f"Too few ( {len(first_net_ports)} ) Simulation Ports on first net. Check it and fix."
-        else:
-            first_net_info = "OK."
+    if len(first_net_ports) > 2:
+        first_net_info = (
+            f"Too many ( {len(first_net_ports)} ) Simulation Ports on first net. Check it and fix if needed."
+        )
+    elif len(first_net_ports) < 2:
+        first_net_info = f"Too few ( {len(first_net_ports)} ) Simulation Ports on first net. Check it and fix."
+    else:
+        first_net_info = "OK."
 
-    if len(second_net_ports) > 0 and is_diff != 0:
+    if is_diff:
         if len(second_net_ports) > 2:
             second_net_info = (
                 f"Too many ( {len(second_net_ports)} ) Simulation Ports on second net. Check it and fix if needed."
@@ -239,20 +238,22 @@ def main(
         if is_diff:
             sp_index_2 = pcb_slice.place_simulation_port(portpads2)
 
-        diff_index_list = []
+        port_index_list = []
 
         for pp in portpads1:
             port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
-            diff_index_list.append(pp.idx - 1)
+            port_index_list.append(pp.idx - 1)
             excite[0] = False
 
         if is_diff:
             for pp in portpads2:
                 port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
-                diff_index_list.append(pp.idx - 1)
+                port_index_list.append(pp.idx - 1)
                 excite[1] = False
 
-            port_cfg.add_differential_pair(check_diffs(diff_index_list), net_name, diff_impedance, interface_name)
+            port_cfg.add_differential_pair(check_diffs(port_index_list), net_name, diff_impedance, interface_name)
+        else:
+            port_cfg.add_se_trace(port_index_list, net_name, interface_name)
 
         pp_grouped: Dict[str, List[PortPad]] = {}
         if len(trs) > 0:

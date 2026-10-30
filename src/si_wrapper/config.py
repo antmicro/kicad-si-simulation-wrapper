@@ -150,7 +150,6 @@ class PortConfig:
                 "start_n": start_n,
                 "stop_n": stop_n,
                 "name": name,
-                "diff_impedance": diff_impedance,
             },
         ]
 
@@ -160,6 +159,11 @@ class PortConfig:
             }
 
         self.load_save(diff_keyword, diff_pattern)
+
+    def add_se_trace(self, indexes: list, name: str, interface: str | None) -> None:
+        """Add SE trace to config."""
+        itfr = {"interface": {"name": interface}} if interface else {}
+        self.load_save("traces", [{"start": indexes[0], "stop": indexes[1], "name": name, **itfr}])
 
 
 class NetInformation:
