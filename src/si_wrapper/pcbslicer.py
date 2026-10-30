@@ -401,6 +401,8 @@ class PCBSlice:
         """Split every footprint into separate pad, then turn pad into footprint."""
         pads_as_fp = []
         for footprint in self.board.GetFootprints():
+            if f"{footprint.GetReference()}".startswith("SP"):
+                continue
             for pad in footprint.Pads():
                 virt_footprint = pcbnew.FOOTPRINT(self.board)
                 new_pad = pcbnew.PAD(pad)

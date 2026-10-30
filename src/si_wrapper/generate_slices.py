@@ -174,10 +174,6 @@ def main(
         if is_diff:
             portpads2 = pcb_slice.get_port_pads(pads, included_pads, excluded_pads, pcb_slice.netname[1])
 
-        logger.info("Terminating Tracks...")
-        pad_pos = pcb_slice.get_des_pads_points()
-        terminate_tracks = pcb_slice.create_edge_cuts(net_start_pos + net_end_pos + pad_pos, offset)
-
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
         port_cfg.create_default_config(net_name)
@@ -188,6 +184,36 @@ def main(
         net_info.add_attributes(nets[0], net_length_1, net_width_1, net_impedance_1, is_diff)
         if is_diff is True:
             net_info.add_attributes(nets[1], net_length_2, net_width_2, net_impedance_2, is_diff)
+
+        if is_diff:
+            if len(portpads1) == 2 and len(portpads2) == 2:
+                if portpads1[0].distance(portpads2[0]) > portpads1[0].distance(portpads2[1]):
+                    # Ensure that excited ports of diff pair are next to each other (on the same trace side)
+                    portpads1.reverse()
+        sp_index_1 = pcb_slice.place_simulation_port(portpads1)
+        if is_diff:
+            sp_index_2 = pcb_slice.place_simulation_port(portpads2)
+
+        port_index_list = []
+
+        for pp in portpads1:
+            port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
+            port_index_list.append(pp.idx - 1)
+            excite[0] = False
+
+        if is_diff:
+            for pp in portpads2:
+                port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
+                port_index_list.append(pp.idx - 1)
+                excite[1] = False
+
+            port_cfg.add_differential_pair(check_diffs(port_index_list), net_name, diff_impedance, interface_name)
+        else:
+            port_cfg.add_se_trace(port_index_list, net_name, interface_name)
+
+        logger.info("Terminating Tracks...")
+        pad_pos = pcb_slice.get_des_pads_points()
+        terminate_tracks = pcb_slice.create_edge_cuts(net_start_pos + net_end_pos + pad_pos, offset)
 
         # Set and save simulation port terminators
         for i in range(len(terminate_tracks)):
@@ -227,33 +253,6 @@ def main(
             _ = pcb_slice.place_simulation_port(portpads_other)
             for pp in portpads_other:
                 port_cfg.add_port_pad(pcb_slice, pp, PCBSlice.get_netclass_impedance(other_nets[pp.net])[0], False)
-
-        if is_diff:
-            if len(portpads1) == 2 and len(portpads2) == 2:
-                if portpads1[0].distance(portpads2[0]) > portpads1[0].distance(portpads2[1]):
-                    # Ensure that excited ports of diff pair are next to each other (on the same trace side)
-                    portpads1.reverse()
-
-        sp_index_1 = pcb_slice.place_simulation_port(portpads1)
-        if is_diff:
-            sp_index_2 = pcb_slice.place_simulation_port(portpads2)
-
-        port_index_list = []
-
-        for pp in portpads1:
-            port_cfg.add_port_pad(pcb_slice, pp, net_impedance_1, excite[0])
-            port_index_list.append(pp.idx - 1)
-            excite[0] = False
-
-        if is_diff:
-            for pp in portpads2:
-                port_cfg.add_port_pad(pcb_slice, pp, net_impedance_2, excite[1])
-                port_index_list.append(pp.idx - 1)
-                excite[1] = False
-
-            port_cfg.add_differential_pair(check_diffs(port_index_list), net_name, diff_impedance, interface_name)
-        else:
-            port_cfg.add_se_trace(port_index_list, net_name, interface_name)
 
         pp_grouped: Dict[str, List[PortPad]] = {}
         if len(trs) > 0:
