@@ -62,6 +62,15 @@ for more information about using `si-wrapper`.
     pip install .
     ```
 
+### Container usage
+
+Alternatively `si-wrapper` can be run using container definition from this repository
+
+```bash
+docker build -t si-wrapper .
+docker run -v "$PWD":/workspace si-wrapper settings
+```
+
 ## Usage
 
 ```console

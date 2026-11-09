@@ -4,44 +4,9 @@ include:
 
 stages:
   - code-checks
-  - test
   - build
+  - test
   - docs
-
-test:
-  stage: test
-  before_script:
-    - mkdir -p logs
-    - apt-get -qqy update >> logs/debian_install.log
-    - apt-get -qqy update --fix-missing >> logs/debian_install.log
-    - apt-get -qqy install git python3 python3-pip gerbv python3-wand >> logs/debian_install.log
-    - git clone --depth 1 https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
-  script:
-    - export PATH=$HOME/.local/bin:$PATH
-    - python3 -m pip install . --break-system-packages --root-user-action=ignore
-    - cd sodimm-ddr5-tester
-    - echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
-    - si-wrapper settings -i init.json
-    - si-wrapper slice
-    - cd slices
-    - |
-      for dir in ./*/; do
-        pushd $dir
-        mkdir fab
-        kicad-cli pcb export gerbers --no-protel-ext -o fab/ *.kicad_pcb
-        kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ *.kicad_pcb
-        si-wrapper gerber2png
-        popd
-      done
-
-  artifacts:
-    when: always
-    paths:
-      - sodimm-ddr5-tester
-      - logs
-
-build-docs:
-  stage: docs
 
 ############ Code Checks #############
 
@@ -67,3 +32,42 @@ lint:
   extends: .code-check-base
   script:
     - uv run ruff check ./src
+
+############ Test #############
+
+test:
+  image: $CI_REGISTRY_IMAGE/kicad-si-simulation-wrapper:$CI_COMMIT_REF_NAME
+  stage: test
+  before_script:
+    - mkdir -p logs
+    - apt-get -qqy update >> logs/debian_install.log
+    - apt-get -qqy update --fix-missing >> logs/debian_install.log
+    - apt-get -qqy install git python3 python3-pip gerbv python3-wand >> logs/debian_install.log
+    - git clone --depth 1 https://github.com/antmicro/sodimm-ddr5-tester.git >> logs/git.log
+  script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - cd sodimm-ddr5-tester
+    - echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
+    - si-wrapper settings -i init.json
+    - si-wrapper slice
+    - cd slices
+    - |
+      for dir in ./*/; do
+        pushd $dir
+        mkdir fab
+        kicad-cli pcb export gerbers --no-protel-ext -o fab/ *.kicad_pcb
+        kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ *.kicad_pcb
+        si-wrapper gerber2png
+        popd
+      done
+
+  artifacts:
+    when: always
+    paths:
+      - sodimm-ddr5-tester
+      - logs
+
+############ Docs #############
+
+build-docs:
+  stage: docs
