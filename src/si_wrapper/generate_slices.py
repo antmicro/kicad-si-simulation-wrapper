@@ -176,7 +176,7 @@ def main(
 
         # Creating config
         port_cfg = PortConfig(f"{dir_path}/{const.SIMULATION_J_CONFIG_PATH}")
-        port_cfg.create_default_config(net_name)
+        port_cfg.create_default_config(net_name, interface_name)
 
         # Create netinfo file
         net_info = NetInformation(f"{dir_path}/{const.NETINFO_J_PATH}")

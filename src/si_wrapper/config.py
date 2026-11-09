@@ -87,9 +87,13 @@ class PortConfig:
         with open(self.path, "w") as write_data:
             json.dump(edit_data, write_data, indent=2)
 
-    def create_default_config(self, net_name: str) -> None:
+    def create_default_config(self, net_name: str, interface_name: str) -> None:
         """Create default configuration file."""
-        default_simulation_data = DEFAULT_SIMULATION_J
+        if interface_name:
+            default_simulation_data = {key: value for key, value in DEFAULT_SIMULATION_J.items() if key != "frequency"}
+        else:
+            default_simulation_data = DEFAULT_SIMULATION_J
+
         default_simulation_data["trace_under_test"] = net_name
 
         with open(self.path, "w") as simulation_json:
