@@ -2,31 +2,17 @@
 
 ## Requirements
 
-`si-wrapper` requires `KiCad 10.0.x`, `python >= 3.13`, `pip` and `gerbv`.
+`si-wrapper` requires `KiCad 10.0.x` (both `kicad-cli` and accessible `pcbnew.py` API), `python >= 3.13`, `pip` and `gerbv`.
 
-> Note: The provided scripts were tested with KiCad 10.0.3 and Debian 13.
+`overlay_render` requires also `gerber2blend`, `pcbooth`, `inkscape` & `wand` in order to process SVG images
 
-### Installation (Debian)
+> Note: The provided scripts were tested with KiCad 10.0.8 and Debian 13.
 
-1. Configure `PATH`:
+## Container usage
 
-    ```bash
-    export PATH=$HOME/.local/bin:$PATH
-    ```
+Preferred way of running `si-wrapper` is using container definition from this repository
 
-2. Install requirements:
-
-    ```bash
-    echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
-    apt update
-    apt install python3 python3-pip gerbv
-    apt install -t bookworm-backports kicad
-    ```
-
-3. Clone and install `si-wrapper`:
-
-    ```bash
-    git clone https://github.com/antmicro/kicad-si-simulation-wrapper
-    cd kicad-si-simulation-wrapper
-    pip install .
-    ```
+```bash
+docker build -t si-wrapper .
+docker run -v "$PWD":/workspace si-wrapper settings
+```

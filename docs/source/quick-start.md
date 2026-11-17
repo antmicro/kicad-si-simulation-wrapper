@@ -111,11 +111,4 @@ to aid the process of KiCad output generation by replacing:
 
 ## Slicing examples
 
-Below, you can see examples of generated slices for the `/DDR5 SODIMM/B.DQ12` net
-with different settings for neighboring. The first one has no reduced layout,
-the second has the neighboring net threshold set to 2 neighboring points,
-the third to 10 neighboring points and
-the fourth to 50 neighboring points.
-The neighboring net distance offset is set to 0.3 mm for each case.
-
-![DDR5_SODIMM_BDQ12](img/sliced_neighbours.png)
+![DDR5_SODIMM_A.CA0](img/slice_DDR5_SODIMM_A.CA0.png)

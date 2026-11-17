@@ -77,7 +77,7 @@ si-wrapper slice -s path_to/slice_config.json
     --debug
     ```
 
-![DDR5_SODIMM_BDQ12](img/sliced_neighbours.png)
+![Example slice: DDR5_SODIMM_A.CA0](img/slice_DDR5_SODIMM_A.CA0.png)
 
 The resulting PCB slices are stored as a separate KiCad PCB project and
 can be previewed after generation.
@@ -86,21 +86,12 @@ A single PCB slice represents a sub-region of the source PCB that contains a spe
 impedance-controlled single net or differential pair.
 The size of each slice is determined by the geometrical span of the designated net(s).
 The script contains its own configuration file which allows
-altering the slicing method.
-In particular, the configuration file allows setting:
+altering the slicing method. (See [slicer config file](#single-configuration-file-description))
 
-* size of a margin added to the minimal dimension
-* neighboring nets that should be included in the slice
-* neighboring nets that should be dropped and omitted in the slice
+Besides cropping board to region of interest, slicer also terminates nearby traces:  
 
-A PCB slice prepared for simulation contains the selected net(s), copper planes,
-vias and neighboring nets (selected in the configuration file).
-Passive elements placed in a series with the selected net (0 Ohm resistors
-and significantly large capacitors) are replaced with shorts.
-Given its validity for our frequencies of interest, this approximation
-enables us to circumvent the current limitations of the OpenEMS simulator.
-Power nets and low speed interfaces are terminated to ground (GND).
-The designated net and neighboring nets are terminated with
+* Power nets and low speed interfaces are terminated to ground (GND).
+* The designated net and neighboring HS nets are terminated with
 Simulation Ports (SP) which indicate their nominal impedance.
 
 ---
@@ -137,8 +128,7 @@ on the board - not the ones added manually.
 To use the script, follow the steps below:
 
 1. Remove redundant Simulation Ports from the created slice.
-Correct those placed in the wrong position - see [examples](#placing-simulation-ports).
-2. Use the script inside `slices/desgnated_net_name`.
+2. Use the script inside `slices/designated_net_name`.
 3. Inspect `simulation.json`. The script automatically updates `simulation.json`,
 but it is highly recommended to check if everything was generated correctly.
 
@@ -148,45 +138,25 @@ To run it, use:
 si-wrapper renumerate 
 ```
 
-### Placing Simulation Ports
-
-Correct:
-
-![Image 1](img/sp_example/ok1.png)
-![Image 2](img/sp_example/ok2.png)
-![Image 3](img/sp_example/ok4.png)
-![Image 4](img/sp_example/ok3.png)
-
-Acceptable:
-
-![Image 1](img/sp_example/acc1.png)
-![Image 2](img/sp_example/acc2.png)
-
-Incorrect:
-
-![Image 1](img/sp_example/not_ok1.png)
-![Image 2](img/sp_example/not_ok2.png)
-![Image 2](img/sp_example/not_ok3.png)
-![Image 2](img/sp_example/not_ok4.png)
-![Image 2](img/sp_example/not_ok5.png)
-![Image 2](img/sp_example/not_ok6.png)
-![Image 2](img/sp_example/not_ok7.png)
-
-> **Important:** Remember that the Simulation Port must be placed over the GND layer.
-> It also must not touch other nets or planes that are not related.
-
 ### Requirements for Simulation Ports placement
 
 Below, you can find a list of rules that define the way of placing Simulation Ports:
 
-* `Simulation_Port` is a footprint,
-* All Simulation Ports are placed at the beginning and end of the nets,
+* `Simulation_Port` is a footprint consisting of crosshair on F.Fab layer
+
+![Simulation Port Footprint](img/port_footprint.png)
+
+* All Simulation Ports are placed at the beginning and end of the nets
+  * typically center of component pad
 * Every single net available on the slice can have more than
     two Simulation Ports, but only one Port's `"excite:"` value set
     in `simulation.json` can be set as `true`,
 * Simulation Ports are named and numbered from SP1 to SPx,
     where x is a natural number and is equal
     to the number of ports placed on the slice,
+* Slice should include nearby `GND` pad(s) (preferably from the same component as signal pad),
+    it will be used to connect port to reference plane during simulation
+  * If such pad is far from signal pad and is removed during slicing, repeat slicing with increased `board_offset` values in [slicer config file](#single-configuration-file-description)
 
 ---
 
@@ -237,7 +207,7 @@ si-wrapper settings -i init.json -o net_configs/
 
 ### Single configuration file description
 
-Configuration of each slice can be done by modifying `slice_config.json`,
+Configuration of each slice can be done by modifying `si-wrapper-cfg/<slice_name>.json`,
 as shown below:
 
 ```json
@@ -260,14 +230,6 @@ as shown below:
   "hidden_pads": {
     "designated_net": true,
     "other_nets": true
-  },
-  "neighbouring_nets": {
-    "in_use": true
-    "offset": 0.5,
-    "common_points": 10,
-    "netlist": [
-      "neighbour_net1", "neighbour_net2"
-    ]
   }
 }
 ```
@@ -291,15 +253,6 @@ Below, you can find description of each field:
     on designated nets. Recommended: `True`.
 * `hidden_pads/other_nets` - hides pads where Simulation Ports are placed
     on other nets. Recommended: `True`.
-* `neighbouring_nets/in_use` - defines if the `neighbouring_nets` feature is in use.
-* `neighbouring_nets/offset` - sets the distance in millimeters,
-    both vertically and horizontally, for designated nets,
-    defining the area where a neighboring track may occur.
-* `neighbouring_nets/common_points` - determines the lower limit for the number
-    of common points of neighboring tracks with the area defined by`neighbouring_nets/offset`.
-    A net whose tracks do not fulfill this requirement is removed.
-* `neighbouring_nets/netlist` - users can specify the name of the neighbors
-    manually and make sure that they are not going to be removed.
 
 ---
 

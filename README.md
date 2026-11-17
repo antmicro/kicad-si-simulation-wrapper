@@ -1,6 +1,6 @@
 # KiCad SI wrapper - tool to prepare input data for SI simulation
 
-Copyright (c) 2023-2025 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2023-2026 [Antmicro](https://www.antmicro.com)
 
 ![ ](img/si-wrapper.png)
 
@@ -26,45 +26,15 @@ for more information about using `si-wrapper`.
 
 ### Requirements
 
-`si-wrapper` requires `KiCad 10.0.x`, `python >= 3.13`, `pip` and `gerbv`.
+`si-wrapper` requires `KiCad 10.0.x` (both `kicad-cli` and accessible `pcbnew.py` API), `python >= 3.13`, `pip` and `gerbv`.
 
-`overlay_render` requires also `gerber2blend`, `pcbooth` & `wand` in order to process SVG images
+`overlay_render` requires also `gerber2blend`, `pcbooth`, `inkscape` & `wand` in order to process SVG images
 
-> Note: The provided scripts were tested with KiCad 10.0.3 and Debian 13.
-
-### Installation (Debian)
-
-1. Configure `PATH`:
-
-    ```bash
-    export PATH=$HOME/.local/bin:$PATH
-    ```
-
-2. Install requirements:
-
-     
-    ```bash
-    echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
-    apt update
-    apt install python3 python3-pip gerbv pipx
-    apt install -t bookworm-backports kicad
-    # for `overlay_render` subcmd also:
-    apt install python3-wand libmagickcore-6.q16-6-extra inkscape
-    pipx install 'git+https://github.com/antmicro/gerber2blend.git' 'git+https://github.com/antmicro/pcbooth.git'
-    ```
-
-
-3. Clone and install `si-wrapper`:
-
-    ```bash
-    git clone https://github.com/antmicro/kicad-si-simulation-wrapper
-    cd kicad-si-simulation-wrapper
-    pip install .
-    ```
+> Note: The provided scripts were tested with KiCad 10.0.8 and Debian 13.
 
 ### Container usage
 
-Alternatively `si-wrapper` can be run using container definition from this repository
+Preferred way of running `si-wrapper` is using container definition from this repository
 
 ```bash
 docker build -t si-wrapper .
