@@ -24,11 +24,19 @@ jobs:
         run: |
           apt-get -qqy update
           apt-get -qqy install -y git python3-pip gerbv
-          pip install --break-system-packages --root-user-action=ignore "."
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.13"
+      - name: Create virtual environment with pcbnew and si-wrapper
+        run: |
+          uv venv --system-site-packages .venv
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> "$GITHUB_ENV"
+          uv sync
       - name: Run tests
         run: |
           git clone https://github.com/antmicro/sodimm-ddr5-tester.git
-          export PATH=$HOME/.local/bin:$PATH
           cd sodimm-ddr5-tester
           echo "{\"netclass\":\"\",\"nets\":[\"/DDR5 SODIMM/A.CA0\",\"/DDR5 SODIMM/A.DQ1\",\"/FPGA MGT Interface/PCIE.CLK_P\",\"/FPGA MGT Interface/PCIE.CLK_N\"]}" > init.json
           mkdir net_configs
@@ -49,5 +57,3 @@ jobs:
         with:
           name: test-slices
           path: sodimm-ddr5-tester
-
-
