@@ -91,7 +91,7 @@ altering the slicing method. (See [slicer config file](#single-configuration-fil
 Besides cropping board to region of interest, slicer also terminates nearby traces:  
 
 * Power nets and low speed interfaces are terminated to ground (GND).
-* The designated net and neighboring HS nets are terminated with
+* The designated net and neighboring high-speed nets are terminated with
 Simulation Ports (SP) which indicate their nominal impedance.
 
 ---
@@ -142,21 +142,21 @@ si-wrapper renumerate
 
 Below, you can find a list of rules that define the way of placing Simulation Ports:
 
-* `Simulation_Port` is a footprint consisting of crosshair on F.Fab layer
+* `Simulation_Port` is a footprint consisting of a crosshair on the F.Fab layer
 
 ![Simulation Port Footprint](img/port_footprint.png)
 
 * All Simulation Ports are placed at the beginning and end of the nets
-  * typically center of component pad
+  * typically center of the component pad
 * Every single net available on the slice can have more than
     two Simulation Ports, but only one Port's `"excite:"` value set
     in `simulation.json` can be set as `true`,
 * Simulation Ports are named and numbered from SP1 to SPx,
     where x is a natural number and is equal
     to the number of ports placed on the slice,
-* Slice should include nearby `GND` pad(s) (preferably from the same component as signal pad),
-    it will be used to connect port to reference plane during simulation
-  * If such pad is far from signal pad and is removed during slicing, repeat slicing with increased `board_offset` values in [slicer config file](#single-configuration-file-description)
+* Slice should include nearby `GND` pad(s) (preferably from the same component as the signal pad),
+    it will be used to connect the port to a reference plane during simulation
+  * If such a pad is far from the signal pad and is removed during slicing, repeat slicing with increased `board_offset` values in the [slicer config file](#single-configuration-file-description)
 
 ---
 
