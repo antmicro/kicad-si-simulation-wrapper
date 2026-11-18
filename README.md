@@ -34,7 +34,7 @@ for more information about using `si-wrapper`.
 
 ### Container usage
 
-Preferred way of running `si-wrapper` is using container definition from this repository
+The recommended way of running `si-wrapper` is using a container definition from this repository.
 
 ```bash
 docker build -t si-wrapper .
