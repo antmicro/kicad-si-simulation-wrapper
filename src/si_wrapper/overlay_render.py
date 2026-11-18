@@ -22,20 +22,18 @@ logger = logging.getLogger(__name__)
 SVG_GLOW_FILTER = """<defs>
     <!-- a transparent glow that takes on the colour of the object it's applied to -->
     <filter
-       id="glow">
+       id="glow"
+        x="-500"
+        y="-500"
+        width="1000"
+        height="1000">
       <feGaussianBlur
          stdDeviation="5"
          result="coloredBlur"
-         width="100"
-         height="100"
-         filterUnits="userSpaceOnUse"
          id="feGaussianBlur2926" />
       <feGaussianBlur
          stdDeviation="2"
          result="coloredBlur2"
-         width="60"
-         height="60"
-         filterUnits="userSpaceOnUse"
          id="feGaussianBlur2927" />
       <feMerge
          id="feMerge2932">
@@ -54,7 +52,7 @@ SVG_GLOW_FILTER = """<defs>
 
 
 def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_dict: Dict[str, str]) -> None:
-    from wand.image import Image, Color
+    from wand.image import Image
 
     with Image(filename=render_path) as render:
         for svg_name, color in svg_dict.items():
@@ -62,29 +60,45 @@ def overlay_render(render_path: Path, svg_base_path: Path, out_path: Path, svg_d
             with open(ifile_path) as ifile_fd:
                 ifile = ifile_fd.read()
             ofile = ifile.replace("opacity:1", "opacity:0.8")
+            ofile = ofile.replace('opacity="1"', 'opacity="0.8"')
 
-            # Remove individual colors so they will not interfere with group settings
-            ofile = ofile.replace("stroke:rgb(0%,0%,0%)", "")
-            ofile = ofile.replace("fill:rgb(0%,0%,0%)", "")
+            # Replace black color with cyan palette
+            ofile = re.sub(r"rgb\(\s*0%?,\s*0%?,\s*0%?\)", rf"{color}", ofile)
 
             # Add glow filter definition after file header
             ofile = re.sub(r"(<svg .*>)", r"\1\n" + SVG_GLOW_FILTER, ofile, count=1)
 
             # Remove Edge.Cuts (gerbv is not able to output it as transparent)
-            ofile = re.sub(r"<path .*rgb\(100%,100%,100%\).*/>", "", ofile)
+            ofile = re.sub(r"<path .*rgb\(100%,\s?100%,\s?100%\).*/>", "", ofile)
+            ofile = ofile.replace("stroke:rgb(255,255,255);", "opacity: 0;")
+            ofile = ofile.replace("fill:rgb(255,255,255);", "opacity: 0;")
 
-            # Apply filter & color to group
-            ofile = ofile.replace("<g ", f'<g filter="url(#glow)" fill="{color}" stroke="{color}" ')
+            # Apply filter to group
+            group_filter = '<g filter="url(#glow)">'
+            if "<g" in ofile:
+                ofile = re.sub(r"(<g.*>)", group_filter + r"\1", ofile, count=1)
+            else:
+                ofile = re.sub(r"</defs>", r"</defs>" + group_filter, ofile, count=1)
+
+            ofile = ofile.replace("</svg>", "</g></svg>")
 
             with tempfile.NamedTemporaryFile(mode="w+") as temp:
                 temp.write(ofile)
                 temp.flush()
-                with Image(filename=temp.name, background=Color("transparent")) as svg_overlay:
-                    if svg_overlay.height > svg_overlay.width:
-                        svg_overlay.rotate(90)
-                    scale = min(render.width / svg_overlay.width, render.height / svg_overlay.height)
-                    svg_overlay.resize(int(svg_overlay.width * scale), int(svg_overlay.height * scale))
-                    render.composite(svg_overlay, gravity="center")
+                mod_svg_file = ifile_path.with_stem(ifile_path.stem + "_glow")
+                mod_svg_file.write_text(ofile)
+
+                png_file = ifile_path.with_suffix(".png")
+                subprocess.run(
+                    ["inkscape", temp.name, "--export-type=png", f"--export-filename={png_file}"], check=True
+                )
+
+                with Image(filename=png_file) as overlay:
+                    if overlay.height > overlay.width:
+                        overlay.rotate(90)
+                    scale = min(render.width / overlay.width, render.height / overlay.height)
+                    overlay.resize(int(overlay.width * scale), int(overlay.height * scale))
+                    render.composite(overlay, gravity="center")
         logger.info(f"Save overlay render: {out_path}")
         render.save(filename=out_path)
 
